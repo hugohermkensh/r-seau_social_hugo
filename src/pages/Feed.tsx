@@ -6,6 +6,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Share2, Send, Home, User, MessageSquare, LogOut } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import StoryCircle from "@/components/StoryCircle";
+import StoryViewer from "@/components/StoryViewer";
+import CreateStory from "@/components/CreateStory";
 
 interface Post {
   id: number;
@@ -14,6 +17,20 @@ interface Post {
   likes: number;
   comments: number;
   timestamp: string;
+}
+
+interface Story {
+  id: number;
+  author: string;
+  content: string;
+  timestamp: string;
+  type: "text" | "image";
+}
+
+interface UserStories {
+  userName: string;
+  hasNewStory: boolean;
+  stories: Story[];
 }
 
 const Feed = () => {
@@ -37,7 +54,32 @@ const Feed = () => {
     },
   ]);
 
+  const [userStories] = useState<UserStories[]>([
+    {
+      userName: "Alex",
+      hasNewStory: true,
+      stories: [
+        { id: 1, author: "Alex", content: "Première story ! 🔥", timestamp: "Il y a 2h", type: "text" },
+        { id: 2, author: "Alex", content: "Trop cool ce réseau privé", timestamp: "Il y a 1h", type: "text" },
+      ],
+    },
+    {
+      userName: "Sarah",
+      hasNewStory: true,
+      stories: [
+        { id: 3, author: "Sarah", content: "Journée incroyable ! 🌟", timestamp: "Il y a 3h", type: "text" },
+      ],
+    },
+    {
+      userName: "Tom",
+      hasNewStory: false,
+      stories: [],
+    },
+  ]);
+
   const [newPost, setNewPost] = useState("");
+  const [selectedStory, setSelectedStory] = useState<{ stories: Story[], index: number } | null>(null);
+  const [showCreateStory, setShowCreateStory] = useState(false);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const handlePost = () => {
@@ -47,6 +89,18 @@ const Feed = () => {
     }
     toast.success("Post publié !");
     setNewPost("");
+  };
+
+  const handleStoryClick = (userName: string) => {
+    const userStory = userStories.find(s => s.userName === userName);
+    if (userStory && userStory.stories.length > 0) {
+      setSelectedStory({ stories: userStory.stories, index: 0 });
+    }
+  };
+
+  const handleCreateStory = (content: string, type: "text" | "image") => {
+    console.log("Story created:", content, type);
+    // Ici on ajouterait la logique pour sauvegarder la story
   };
 
   const handleLogout = () => {
@@ -80,6 +134,26 @@ const Feed = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6 max-w-2xl">
+        {/* Stories Section */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="flex gap-4 pb-2">
+            <StoryCircle
+              userName={user.pseudo || "Toi"}
+              hasNewStory={false}
+              isOwn={true}
+              onClick={() => setShowCreateStory(true)}
+            />
+            {userStories.map((story) => (
+              <StoryCircle
+                key={story.userName}
+                userName={story.userName}
+                hasNewStory={story.hasNewStory}
+                onClick={() => handleStoryClick(story.userName)}
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Create Post Card */}
         <Card className="glass-effect border-primary/30 p-4 mb-6 animate-slide-up">
           <div className="flex gap-3">
@@ -177,6 +251,25 @@ const Feed = () => {
           </div>
         </div>
       </nav>
+
+      {/* Story Viewer */}
+      {selectedStory && (
+        <StoryViewer
+          stories={selectedStory.stories}
+          currentIndex={selectedStory.index}
+          onClose={() => setSelectedStory(null)}
+          onNext={() => setSelectedStory(prev => prev ? { ...prev, index: prev.index + 1 } : null)}
+          onPrevious={() => setSelectedStory(prev => prev ? { ...prev, index: prev.index - 1 } : null)}
+        />
+      )}
+
+      {/* Create Story */}
+      {showCreateStory && (
+        <CreateStory
+          onClose={() => setShowCreateStory(false)}
+          onSubmit={handleCreateStory}
+        />
+      )}
     </div>
   );
 };
