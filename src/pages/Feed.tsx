@@ -1,118 +1,191 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Share2, Send, Home, User, MessageSquare, LogOut } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { ZodError } from "zod";
 import StoryCircle from "@/components/StoryCircle";
 import StoryViewer from "@/components/StoryViewer";
 import CreateStory from "@/components/CreateStory";
-
-interface Post {
-  id: number;
-  author: string;
-  content: string;
-  likes: number;
-  comments: number;
-  timestamp: string;
-}
-
-interface Story {
-  id: number;
-  author: string;
-  content: string;
-  timestamp: string;
-  type: "text" | "image";
-}
-
-interface UserStories {
-  userName: string;
-  hasNewStory: boolean;
-  stories: Story[];
-}
+import { currentUserStorage, postStorage, storyStorage, userStorage, messageStorage } from "@/lib/storage";
+import { postCreateSchema, commentCreateSchema } from "@/lib/validators";
+import { formatTimestamp, getInitials } from "@/lib/utils";
 
 const Feed = () => {
   const navigate = useNavigate();
-  const [posts] = useState<Post[]>([
-    {
-      id: 1,
-      author: "Alex",
-      content: "Premier post sur notre réseau privé ! 🚀",
-      likes: 5,
-      comments: 2,
-      timestamp: "Il y a 5 min",
-    },
-    {
-      id: 2,
-      author: "Sarah",
-      content: "Trop cool ce design futuriste ! 💙",
-      likes: 8,
-      comments: 3,
-      timestamp: "Il y a 15 min",
-    },
-  ]);
-
-  const [userStories] = useState<UserStories[]>([
-    {
-      userName: "Alex",
-      hasNewStory: true,
-      stories: [
-        { id: 1, author: "Alex", content: "Première story ! 🔥", timestamp: "Il y a 2h", type: "text" },
-        { id: 2, author: "Alex", content: "Trop cool ce réseau privé", timestamp: "Il y a 1h", type: "text" },
-      ],
-    },
-    {
-      userName: "Sarah",
-      hasNewStory: true,
-      stories: [
-        { id: 3, author: "Sarah", content: "Journée incroyable ! 🌟", timestamp: "Il y a 3h", type: "text" },
-      ],
-    },
-    {
-      userName: "Tom",
-      hasNewStory: false,
-      stories: [],
-    },
-  ]);
-
+  const [user, setUser] = useState(currentUserStorage.get());
+  const [posts, setPosts] = useState<any[]>([]);
+  const [stories, setStories] = useState<any[]>([]);
   const [newPost, setNewPost] = useState("");
-  const [selectedStory, setSelectedStory] = useState<{ stories: Story[], index: number } | null>(null);
+  const [selectedStory, setSelectedStory] = useState<{ stories: any[], index: number } | null>(null);
   const [showCreateStory, setShowCreateStory] = useState(false);
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const handlePost = () => {
-    if (!newPost.trim()) {
-      toast.error("Écris quelque chose !");
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
       return;
     }
-    toast.success("Post publié !");
-    setNewPost("");
+
+    loadPosts();
+    loadStories();
+    loadUnreadMessages();
+  }, [user, navigate]);
+
+  const loadPosts = () => {
+    const allPosts = postStorage.getAll();
+    setPosts(allPosts);
   };
 
-  const handleStoryClick = (userName: string) => {
-    const userStory = userStories.find(s => s.userName === userName);
+  const loadStories = () => {
+    const allStories = storyStorage.getAll();
+    
+    // Group stories by author
+    const storyMap = new Map<string, any[]>();
+    allStories.forEach(story => {
+      const author = userStorage.getById(story.authorId);
+      if (author) {
+        const existing = storyMap.get(author.id) || [];
+        existing.push(story);
+        storyMap.set(author.id, existing);
+      }
+    });
+
+    const grouped = Array.from(storyMap.entries()).map(([authorId, userStories]) => {
+      const author = userStorage.getById(authorId);
+      const hasNew = userStories.some(s => !s.viewers.includes(user!.id));
+      return {
+        userName: author?.pseudo || "Inconnu",
+        authorId,
+        hasNewStory: hasNew,
+        stories: userStories.sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        ),
+      };
+    });
+
+    setStories(grouped);
+  };
+
+  const loadUnreadMessages = () => {
+    const count = messageStorage.getUnreadCount(user!.id);
+    setUnreadMessages(count);
+  };
+
+  const handlePost = () => {
+    if (!user) return;
+
+    try {
+      const validated = postCreateSchema.parse({ content: newPost });
+
+      postStorage.create({
+        authorId: user.id,
+        author: user.pseudo,
+        content: validated.content,
+        type: "text",
+      });
+
+      setNewPost("");
+      toast.success("Post publié !");
+      loadPosts();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        toast.error(error.issues[0].message);
+      }
+    }
+  };
+
+  const handleLike = (postId: string) => {
+    if (!user) return;
+    postStorage.toggleLike(postId, user.id);
+    loadPosts();
+  };
+
+  const handleComment = (postId: string) => {
+    if (!user || !commentText.trim()) return;
+
+    try {
+      const validated = commentCreateSchema.parse({ content: commentText });
+
+      postStorage.addComment(postId, {
+        id: `comment_${Date.now()}`,
+        authorId: user.id,
+        author: user.pseudo,
+        content: validated.content,
+        timestamp: new Date().toISOString(),
+      });
+
+      setCommentText("");
+      setCommentingPostId(null);
+      toast.success("Commentaire ajouté !");
+      loadPosts();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        toast.error(error.issues[0].message);
+      }
+    }
+  };
+
+  const handleDeletePost = (postId: string, authorId: string) => {
+    if (!user || user.id !== authorId) {
+      toast.error("Tu ne peux supprimer que tes propres posts");
+      return;
+    }
+    
+    postStorage.delete(postId);
+    loadPosts();
+    toast.success("Post supprimé");
+  };
+
+  const handleStoryClick = (authorId: string) => {
+    const userStory = stories.find(s => s.authorId === authorId);
     if (userStory && userStory.stories.length > 0) {
       setSelectedStory({ stories: userStory.stories, index: 0 });
+      // Mark first story as viewed
+      storyStorage.addViewer(userStory.stories[0].id, user!.id);
+    }
+  };
+
+  const handleStoryNext = () => {
+    if (!selectedStory || !user) return;
+    const newIndex = selectedStory.index + 1;
+    
+    if (newIndex < selectedStory.stories.length) {
+      setSelectedStory({ ...selectedStory, index: newIndex });
+      storyStorage.addViewer(selectedStory.stories[newIndex].id, user.id);
+    } else {
+      setSelectedStory(null);
+      loadStories();
     }
   };
 
   const handleCreateStory = (content: string, type: "text" | "image") => {
-    console.log("Story created:", content, type);
-    // Ici on ajouterait la logique pour sauvegarder la story
+    if (!user) return;
+
+    storyStorage.create({
+      authorId: user.id,
+      author: user.pseudo,
+      content,
+      type,
+    });
+
+    toast.success("Story publiée ! 🎉");
+    loadStories();
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    currentUserStorage.clear();
     toast.success("À bientôt !");
     navigate("/");
   };
 
-  if (!user.pseudo) {
-    navigate("/");
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <div className="min-h-screen pb-20">
@@ -138,17 +211,17 @@ const Feed = () => {
         <div className="mb-6 overflow-x-auto">
           <div className="flex gap-4 pb-2">
             <StoryCircle
-              userName={user.pseudo || "Toi"}
+              userName={user.pseudo}
               hasNewStory={false}
               isOwn={true}
               onClick={() => setShowCreateStory(true)}
             />
-            {userStories.map((story) => (
+            {stories.map((story) => (
               <StoryCircle
-                key={story.userName}
+                key={story.authorId}
                 userName={story.userName}
                 hasNewStory={story.hasNewStory}
-                onClick={() => handleStoryClick(story.userName)}
+                onClick={() => handleStoryClick(story.authorId)}
               />
             ))}
           </div>
@@ -159,7 +232,7 @@ const Feed = () => {
           <div className="flex gap-3">
             <Avatar className="border-2 border-primary/50">
               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold">
-                {user.pseudo?.charAt(0).toUpperCase()}
+                {getInitials(user.pseudo)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 space-y-3">
@@ -169,57 +242,141 @@ const Feed = () => {
                 onChange={(e) => setNewPost(e.target.value)}
                 className="bg-secondary/50 border-border/50 resize-none focus:border-primary transition-all"
                 rows={3}
+                maxLength={1000}
               />
-              <Button 
-                onClick={handlePost}
-                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all glow-border text-primary-foreground"
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Publier
-              </Button>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{newPost.length}/1000</span>
+                <Button 
+                  onClick={handlePost}
+                  disabled={!newPost.trim()}
+                  className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all glow-border text-primary-foreground"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Publier
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
 
         {/* Posts Feed */}
         <div className="space-y-4">
-          {posts.map((post, index) => (
-            <Card 
-              key={post.id} 
-              className="glass-effect border-primary/30 p-4 hover:border-primary/50 transition-all animate-slide-up"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="flex items-start gap-3 mb-3">
-                <Avatar className="border-2 border-primary/50">
-                  <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold">
-                    {post.author.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-foreground">{post.author}</h3>
-                    <span className="text-xs text-muted-foreground">{post.timestamp}</span>
+          {posts.length === 0 ? (
+            <Card className="glass-effect border-primary/30 p-8 text-center">
+              <p className="text-muted-foreground">Aucune publication pour le moment</p>
+              <p className="text-xs text-muted-foreground mt-2">Sois le premier à poster !</p>
+            </Card>
+          ) : (
+            posts.map((post, index) => (
+              <Card 
+                key={post.id} 
+                className="glass-effect border-primary/30 p-4 hover:border-primary/50 transition-all animate-slide-up"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <Avatar className="border-2 border-primary/50">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold">
+                      {getInitials(post.author)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-foreground">{post.author}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimestamp(post.timestamp)}
+                        </span>
+                        {post.authorId === user.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeletePost(post.id, post.authorId)}
+                            className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <p className="text-foreground mb-4 ml-12">{post.content}</p>
+                <p className="text-foreground mb-4 ml-12 whitespace-pre-wrap">{post.content}</p>
 
-              <div className="flex items-center gap-6 ml-12 text-muted-foreground">
-                <button className="flex items-center gap-2 hover:text-primary transition-colors group">
-                  <Heart className="w-5 h-5 group-hover:fill-primary transition-all" />
-                  <span className="text-sm">{post.likes}</span>
-                </button>
-                <button className="flex items-center gap-2 hover:text-accent transition-colors">
-                  <MessageCircle className="w-5 h-5" />
-                  <span className="text-sm">{post.comments}</span>
-                </button>
-                <button className="flex items-center gap-2 hover:text-accent transition-colors">
-                  <Share2 className="w-5 h-5" />
-                </button>
-              </div>
-            </Card>
-          ))}
+                {/* Actions */}
+                <div className="flex items-center gap-6 ml-12 text-muted-foreground mb-3">
+                  <button 
+                    onClick={() => handleLike(post.id)}
+                    className={`flex items-center gap-2 transition-colors group ${
+                      post.likes.includes(user.id) ? "text-primary" : "hover:text-primary"
+                    }`}
+                  >
+                    <Heart 
+                      className={`w-5 h-5 transition-all ${
+                        post.likes.includes(user.id) ? "fill-primary" : "group-hover:fill-primary"
+                      }`}
+                    />
+                    <span className="text-sm">{post.likes.length}</span>
+                  </button>
+                  <button 
+                    onClick={() => setCommentingPostId(commentingPostId === post.id ? null : post.id)}
+                    className="flex items-center gap-2 hover:text-accent transition-colors"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    <span className="text-sm">{post.comments.length}</span>
+                  </button>
+                </div>
+
+                {/* Comments */}
+                {post.comments.length > 0 && (
+                  <div className="ml-12 space-y-2 mb-3 pt-3 border-t border-border/50">
+                    {post.comments.map((comment: any) => (
+                      <div key={comment.id} className="flex gap-2">
+                        <Avatar className="w-6 h-6 border border-primary/50">
+                          <AvatarFallback className="bg-secondary text-foreground text-xs font-bold">
+                            {getInitials(comment.author)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="bg-secondary/50 rounded-lg px-3 py-1.5">
+                            <p className="text-xs font-semibold text-foreground mb-0.5">
+                              {comment.author}
+                            </p>
+                            <p className="text-sm text-foreground">{comment.content}</p>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 ml-3">
+                            {formatTimestamp(comment.timestamp)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Comment Input */}
+                {commentingPostId === post.id && (
+                  <div className="ml-12 flex gap-2 pt-3 border-t border-border/50">
+                    <Input
+                      placeholder="Écris un commentaire..."
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleComment(post.id)}
+                      className="bg-secondary/50 border-border/50"
+                      maxLength={500}
+                    />
+                    <Button
+                      onClick={() => handleComment(post.id)}
+                      disabled={!commentText.trim()}
+                      size="icon"
+                      className="bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            ))
+          )}
         </div>
       </div>
 
@@ -230,20 +387,36 @@ const Feed = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="hover:bg-primary/20 hover:text-primary transition-all"
+              onClick={() => navigate("/feed")}
+              className="hover:bg-primary/20 hover:text-primary transition-all text-primary"
             >
               <Home className="w-6 h-6" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="hover:bg-primary/20 hover:text-primary transition-all"
+              onClick={() => navigate("/messages")}
+              className="hover:bg-primary/20 hover:text-primary transition-all relative"
             >
               <MessageSquare className="w-6 h-6" />
+              {unreadMessages > 0 && (
+                <span className="absolute top-1 right-1 bg-primary text-primary-foreground text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {unreadMessages > 9 ? "9+" : unreadMessages}
+                </span>
+              )}
             </Button>
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => navigate("/calendar")}
+              className="hover:bg-primary/20 hover:text-primary transition-all"
+            >
+              <CalendarIcon className="w-6 h-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/profile")}
               className="hover:bg-primary/20 hover:text-primary transition-all"
             >
               <User className="w-6 h-6" />
@@ -257,9 +430,16 @@ const Feed = () => {
         <StoryViewer
           stories={selectedStory.stories}
           currentIndex={selectedStory.index}
-          onClose={() => setSelectedStory(null)}
-          onNext={() => setSelectedStory(prev => prev ? { ...prev, index: prev.index + 1 } : null)}
-          onPrevious={() => setSelectedStory(prev => prev ? { ...prev, index: prev.index - 1 } : null)}
+          onClose={() => {
+            setSelectedStory(null);
+            loadStories();
+          }}
+          onNext={handleStoryNext}
+          onPrevious={() => {
+            if (selectedStory.index > 0) {
+              setSelectedStory({ ...selectedStory, index: selectedStory.index - 1 });
+            }
+          }}
         />
       )}
 

@@ -1,0 +1,408 @@
+// Local storage management with encryption simulation
+import { z } from "zod";
+
+// Schemas for validation
+export const userSchema = z.object({
+  id: z.string(),
+  pseudo: z.string().min(2).max(20),
+  code: z.string().min(4).max(50),
+  avatar: z.string().optional(),
+  bio: z.string().max(200).optional(),
+  createdAt: z.string(),
+});
+
+export const postSchema = z.object({
+  id: z.string(),
+  authorId: z.string(),
+  author: z.string(),
+  content: z.string().min(1).max(1000),
+  likes: z.array(z.string()),
+  comments: z.array(z.object({
+    id: z.string(),
+    authorId: z.string(),
+    author: z.string(),
+    content: z.string().max(500),
+    timestamp: z.string(),
+  })),
+  timestamp: z.string(),
+  type: z.enum(["text", "image"]),
+});
+
+export const storySchema = z.object({
+  id: z.string(),
+  authorId: z.string(),
+  author: z.string(),
+  content: z.string().max(280),
+  timestamp: z.string(),
+  expiresAt: z.string(),
+  type: z.enum(["text", "image"]),
+  viewers: z.array(z.string()),
+});
+
+export const messageSchema = z.object({
+  id: z.string(),
+  senderId: z.string(),
+  receiverId: z.string(),
+  content: z.string().min(1).max(2000),
+  timestamp: z.string(),
+  read: z.boolean(),
+});
+
+export const eventSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  date: z.string(),
+  time: z.string().optional(),
+  location: z.string().max(200).optional(),
+  createdBy: z.string(),
+  participants: z.array(z.string()),
+  timestamp: z.string(),
+});
+
+type User = z.infer<typeof userSchema>;
+type Post = z.infer<typeof postSchema>;
+type Story = z.infer<typeof storySchema>;
+type Message = z.infer<typeof messageSchema>;
+type Event = z.infer<typeof eventSchema>;
+
+// Storage keys
+const STORAGE_KEYS = {
+  USERS: 'reseau_potes_users',
+  POSTS: 'reseau_potes_posts',
+  STORIES: 'reseau_potes_stories',
+  MESSAGES: 'reseau_potes_messages',
+  EVENTS: 'reseau_potes_events',
+  CURRENT_USER: 'reseau_potes_current_user',
+} as const;
+
+// Generic storage functions
+function getFromStorage<T>(key: string): T[] {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error(`Error reading from storage: ${key}`, error);
+    return [];
+  }
+}
+
+function saveToStorage<T>(key: string, data: T[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error saving to storage: ${key}`, error);
+  }
+}
+
+// User management
+export const userStorage = {
+  getAll: (): User[] => getFromStorage<User>(STORAGE_KEYS.USERS),
+  
+  getById: (id: string): User | undefined => {
+    const users = getFromStorage<User>(STORAGE_KEYS.USERS);
+    return users.find(u => u.id === id);
+  },
+  
+  getByPseudo: (pseudo: string): User | undefined => {
+    const users = getFromStorage<User>(STORAGE_KEYS.USERS);
+    return users.find(u => u.pseudo.toLowerCase() === pseudo.toLowerCase());
+  },
+  
+  create: (user: Omit<User, 'id' | 'createdAt'>): User => {
+    const users = getFromStorage<User>(STORAGE_KEYS.USERS);
+    const newUser: User = {
+      ...user,
+      id: `user_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    const validated = userSchema.parse(newUser);
+    users.push(validated);
+    saveToStorage(STORAGE_KEYS.USERS, users);
+    return validated;
+  },
+  
+  update: (id: string, updates: Partial<User>): User | null => {
+    const users = getFromStorage<User>(STORAGE_KEYS.USERS);
+    const index = users.findIndex(u => u.id === id);
+    if (index === -1) return null;
+    
+    users[index] = { ...users[index], ...updates };
+    const validated = userSchema.parse(users[index]);
+    users[index] = validated;
+    saveToStorage(STORAGE_KEYS.USERS, users);
+    return validated;
+  },
+};
+
+// Post management
+export const postStorage = {
+  getAll: (): Post[] => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    return posts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  },
+  
+  getById: (id: string): Post | undefined => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    return posts.find(p => p.id === id);
+  },
+  
+  getByAuthor: (authorId: string): Post[] => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    return posts.filter(p => p.authorId === authorId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  },
+  
+  create: (post: Omit<Post, 'id' | 'timestamp' | 'likes' | 'comments'>): Post => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    const newPost: Post = {
+      ...post,
+      id: `post_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      likes: [],
+      comments: [],
+    };
+    const validated = postSchema.parse(newPost);
+    posts.push(validated);
+    saveToStorage(STORAGE_KEYS.POSTS, posts);
+    return validated;
+  },
+  
+  toggleLike: (postId: string, userId: string): Post | null => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    const index = posts.findIndex(p => p.id === postId);
+    if (index === -1) return null;
+    
+    const likeIndex = posts[index].likes.indexOf(userId);
+    if (likeIndex === -1) {
+      posts[index].likes.push(userId);
+    } else {
+      posts[index].likes.splice(likeIndex, 1);
+    }
+    
+    saveToStorage(STORAGE_KEYS.POSTS, posts);
+    return posts[index];
+  },
+  
+  addComment: (postId: string, comment: Post['comments'][0]): Post | null => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    const index = posts.findIndex(p => p.id === postId);
+    if (index === -1) return null;
+    
+    posts[index].comments.push(comment);
+    saveToStorage(STORAGE_KEYS.POSTS, posts);
+    return posts[index];
+  },
+  
+  delete: (postId: string): boolean => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    const filtered = posts.filter(p => p.id !== postId);
+    if (filtered.length === posts.length) return false;
+    saveToStorage(STORAGE_KEYS.POSTS, filtered);
+    return true;
+  },
+};
+
+// Story management
+export const storyStorage = {
+  getAll: (): Story[] => {
+    const stories = getFromStorage<Story>(STORAGE_KEYS.STORIES);
+    const now = new Date().getTime();
+    // Filter expired stories
+    const active = stories.filter(s => new Date(s.expiresAt).getTime() > now);
+    if (active.length !== stories.length) {
+      saveToStorage(STORAGE_KEYS.STORIES, active);
+    }
+    return active;
+  },
+  
+  getByAuthor: (authorId: string): Story[] => {
+    const stories = storyStorage.getAll();
+    return stories.filter(s => s.authorId === authorId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  },
+  
+  create: (story: Omit<Story, 'id' | 'timestamp' | 'expiresAt' | 'viewers'>): Story => {
+    const stories = getFromStorage<Story>(STORAGE_KEYS.STORIES);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24h
+    
+    const newStory: Story = {
+      ...story,
+      id: `story_${Date.now()}`,
+      timestamp: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      viewers: [],
+    };
+    const validated = storySchema.parse(newStory);
+    stories.push(validated);
+    saveToStorage(STORAGE_KEYS.STORIES, stories);
+    return validated;
+  },
+  
+  addViewer: (storyId: string, userId: string): Story | null => {
+    const stories = getFromStorage<Story>(STORAGE_KEYS.STORIES);
+    const index = stories.findIndex(s => s.id === storyId);
+    if (index === -1) return null;
+    
+    if (!stories[index].viewers.includes(userId)) {
+      stories[index].viewers.push(userId);
+      saveToStorage(STORAGE_KEYS.STORIES, stories);
+    }
+    return stories[index];
+  },
+};
+
+// Message management
+export const messageStorage = {
+  getConversation: (user1Id: string, user2Id: string): Message[] => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    return messages.filter(m => 
+      (m.senderId === user1Id && m.receiverId === user2Id) ||
+      (m.senderId === user2Id && m.receiverId === user1Id)
+    ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  },
+  
+  getUnreadCount: (userId: string): number => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    return messages.filter(m => m.receiverId === userId && !m.read).length;
+  },
+  
+  getConversations: (userId: string): { userId: string, lastMessage: Message, unreadCount: number }[] => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    const userMessages = messages.filter(m => m.senderId === userId || m.receiverId === userId);
+    
+    const conversations = new Map<string, { lastMessage: Message, unreadCount: number }>();
+    
+    userMessages.forEach(msg => {
+      const otherId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      const existing = conversations.get(otherId);
+      
+      if (!existing || new Date(msg.timestamp) > new Date(existing.lastMessage.timestamp)) {
+        const unread = userMessages.filter(m => 
+          m.senderId === otherId && m.receiverId === userId && !m.read
+        ).length;
+        
+        conversations.set(otherId, { lastMessage: msg, unreadCount: unread });
+      }
+    });
+    
+    return Array.from(conversations.entries()).map(([userId, data]) => ({
+      userId,
+      ...data
+    })).sort((a, b) => 
+      new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime()
+    );
+  },
+  
+  send: (message: Omit<Message, 'id' | 'timestamp' | 'read'>): Message => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    const newMessage: Message = {
+      ...message,
+      id: `msg_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+    const validated = messageSchema.parse(newMessage);
+    messages.push(validated);
+    saveToStorage(STORAGE_KEYS.MESSAGES, messages);
+    return validated;
+  },
+  
+  markAsRead: (userId: string, senderId: string): void => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    messages.forEach(msg => {
+      if (msg.receiverId === userId && msg.senderId === senderId && !msg.read) {
+        msg.read = true;
+      }
+    });
+    saveToStorage(STORAGE_KEYS.MESSAGES, messages);
+  },
+};
+
+// Event management
+export const eventStorage = {
+  getAll: (): Event[] => {
+    const events = getFromStorage<Event>(STORAGE_KEYS.EVENTS);
+    return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  },
+  
+  getUpcoming: (): Event[] => {
+    const events = eventStorage.getAll();
+    const now = new Date().toISOString().split('T')[0];
+    return events.filter(e => e.date >= now);
+  },
+  
+  create: (event: Omit<Event, 'id' | 'timestamp'>): Event => {
+    const events = getFromStorage<Event>(STORAGE_KEYS.EVENTS);
+    const newEvent: Event = {
+      ...event,
+      id: `event_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    };
+    const validated = eventSchema.parse(newEvent);
+    events.push(validated);
+    saveToStorage(STORAGE_KEYS.EVENTS, events);
+    return validated;
+  },
+  
+  toggleParticipant: (eventId: string, userId: string): Event | null => {
+    const events = getFromStorage<Event>(STORAGE_KEYS.EVENTS);
+    const index = events.findIndex(e => e.id === eventId);
+    if (index === -1) return null;
+    
+    const participantIndex = events[index].participants.indexOf(userId);
+    if (participantIndex === -1) {
+      events[index].participants.push(userId);
+    } else {
+      events[index].participants.splice(participantIndex, 1);
+    }
+    
+    saveToStorage(STORAGE_KEYS.EVENTS, events);
+    return events[index];
+  },
+  
+  delete: (eventId: string): boolean => {
+    const events = getFromStorage<Event>(STORAGE_KEYS.EVENTS);
+    const filtered = events.filter(e => e.id !== eventId);
+    if (filtered.length === events.length) return false;
+    saveToStorage(STORAGE_KEYS.EVENTS, filtered);
+    return true;
+  },
+};
+
+// Current user
+export const currentUserStorage = {
+  get: (): User | null => {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+  
+  set: (user: User): void => {
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+  },
+  
+  clear: (): void => {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  },
+};
+
+// Initialize demo data
+export const initializeDemoData = () => {
+  const users = userStorage.getAll();
+  if (users.length === 0) {
+    // Create demo users
+    const demoUsers = [
+      { pseudo: "Alex", code: "demo1234" },
+      { pseudo: "Sarah", code: "demo1234" },
+      { pseudo: "Tom", code: "demo1234" },
+      { pseudo: "Emma", code: "demo1234" },
+    ];
+    
+    demoUsers.forEach(user => userStorage.create(user));
+  }
+};

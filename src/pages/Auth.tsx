@@ -5,27 +5,61 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { loginSchema } from "@/lib/validators";
+import { userStorage, currentUserStorage, initializeDemoData } from "@/lib/storage";
+import { ZodError } from "zod";
 
 const Auth = () => {
   const [pseudo, setPseudo] = useState("");
   const [code, setCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!pseudo || !code) {
-      toast.error("Veuillez remplir tous les champs");
-      return;
-    }
+  // Initialize demo data
+  useState(() => {
+    initializeDemoData();
+  });
 
-    // Mock authentication - À remplacer par vraie authentification locale
-    if (code.length >= 4) {
-      localStorage.setItem("user", JSON.stringify({ pseudo, id: Date.now() }));
-      toast.success(`Bienvenue ${pseudo} !`);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Validate input
+      const validated = loginSchema.parse({ pseudo, code });
+
+      // Check if user exists
+      let user = userStorage.getByPseudo(validated.pseudo);
+
+      if (!user) {
+        // Create new user if doesn't exist
+        user = userStorage.create({
+          pseudo: validated.pseudo,
+          code: validated.code,
+        });
+        toast.success(`Compte créé ! Bienvenue ${validated.pseudo} ! 🎉`);
+      } else {
+        // Verify code
+        if (user.code !== validated.code) {
+          toast.error("Code incorrect");
+          setIsLoading(false);
+          return;
+        }
+        toast.success(`Rebonjour ${validated.pseudo} !`);
+      }
+
+      // Save current user
+      currentUserStorage.set(user);
       navigate("/feed");
-    } else {
-      toast.error("Code invalide (minimum 4 caractères)");
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const firstError = error.issues[0];
+        toast.error(firstError.message);
+      } else {
+        toast.error("Une erreur est survenue");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -83,13 +117,14 @@ const Auth = () => {
 
             <Button 
               type="submit" 
+              disabled={isLoading}
               className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-all duration-300 glow-border text-primary-foreground font-semibold"
             >
-              Se connecter
+              {isLoading ? "Connexion..." : "Se connecter"}
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              Réseau 100% local et sécurisé
+              Réseau 100% local et sécurisé • Nouveau ? Un compte sera créé automatiquement
             </p>
           </form>
         </CardContent>
