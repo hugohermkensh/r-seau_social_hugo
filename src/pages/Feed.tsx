@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2, Shield } from "lucide-react";
+import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2, Shield, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ZodError } from "zod";
 import StoryCircle from "@/components/StoryCircle";
 import StoryViewer from "@/components/StoryViewer";
 import CreateStory from "@/components/CreateStory";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import EmptyState from "@/components/EmptyState";
 import { currentUserStorage, postStorage, storyStorage, userStorage, messageStorage } from "@/lib/storage";
 import { isAdmin } from "@/lib/auth";
 import { postCreateSchema, commentCreateSchema } from "@/lib/validators";
@@ -27,6 +29,7 @@ const Feed = () => {
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -34,9 +37,17 @@ const Feed = () => {
       return;
     }
 
-    loadPosts();
-    loadStories();
-    loadUnreadMessages();
+    const loadData = async () => {
+      setIsLoading(true);
+      await Promise.all([
+        loadPosts(),
+        loadStories(),
+        loadUnreadMessages()
+      ]);
+      setIsLoading(false);
+    };
+
+    loadData();
   }, [user, navigate]);
 
   const loadPosts = () => {
@@ -190,10 +201,10 @@ const Feed = () => {
   return (
     <div className="min-h-screen pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-effect border-b border-primary/30 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 glass-effect border-b border-primary/30 backdrop-blur-xl animate-glow-pulse">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold glow-text bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Réseau Potes
+          <h1 className="text-2xl font-bold glow-text bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent animate-fade-in">
+            🚀 Réseau Potes
           </h1>
           <div className="flex items-center gap-2">
             {user && isAdmin(user.id) && (
@@ -201,7 +212,8 @@ const Feed = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/admin")}
-                className="hover:bg-primary/10 transition-all duration-300"
+                className="hover:bg-primary/10 transition-all duration-300 hover-lift"
+                title="Administration"
               >
                 <Shield className="h-5 w-5" />
               </Button>
@@ -210,7 +222,8 @@ const Feed = () => {
               variant="ghost"
               size="icon"
               onClick={handleLogout}
-              className="hover:bg-destructive/10 hover:text-destructive transition-all duration-300"
+              className="hover:bg-destructive/10 hover:text-destructive transition-all duration-300 hover-lift"
+              title="Déconnexion"
             >
               <LogOut className="h-5 w-5" />
             </Button>
@@ -218,10 +231,15 @@ const Feed = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : (
+        <div className="container mx-auto px-4 py-6 max-w-2xl">
         {/* Stories Section */}
-        <div className="mb-6 overflow-x-auto">
-          <div className="flex gap-4 pb-2">
+        <div className="mb-6 overflow-x-auto hide-scrollbar">
+          <div className="flex gap-4 pb-2 animate-fade-in">
             <StoryCircle
               userName={user.pseudo}
               hasNewStory={false}
@@ -240,7 +258,7 @@ const Feed = () => {
         </div>
 
         {/* Create Post Card */}
-        <Card className="glass-effect border-primary/30 p-4 mb-6 animate-slide-up">
+        <Card className="glass-effect border-primary/30 p-4 mb-6 animate-slide-up hover-lift">
           <div className="flex gap-3">
             <Avatar className="border-2 border-primary/50">
               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold">
@@ -274,10 +292,15 @@ const Feed = () => {
         {/* Posts Feed */}
         <div className="space-y-4">
           {posts.length === 0 ? (
-            <Card className="glass-effect border-primary/30 p-8 text-center">
-              <p className="text-muted-foreground">Aucune publication pour le moment</p>
-              <p className="text-xs text-muted-foreground mt-2">Sois le premier à poster !</p>
-            </Card>
+            <EmptyState
+              icon={Plus}
+              title="Aucune publication"
+              description="Sois le premier à partager quelque chose avec tes amis !"
+              action={{
+                label: "Créer un post",
+                onClick: () => document.querySelector('textarea')?.focus()
+              }}
+            />
           ) : (
             posts.map((post, index) => (
               <Card 
@@ -390,7 +413,6 @@ const Feed = () => {
             ))
           )}
         </div>
-      </div>
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 glass-effect border-t border-primary/30 backdrop-blur-xl z-50">
@@ -461,6 +483,8 @@ const Feed = () => {
           onClose={() => setShowCreateStory(false)}
           onSubmit={handleCreateStory}
         />
+      )}
+        </div>
       )}
     </div>
   );
