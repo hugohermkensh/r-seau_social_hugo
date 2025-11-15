@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { loginSchema } from "@/lib/validators";
-import { userStorage, currentUserStorage, initializeDemoData } from "@/lib/storage";
+import { userStorage, currentUserStorage, initializeAdmin } from "@/lib/storage";
+import { verifyPassword } from "@/lib/auth";
 import { ZodError } from "zod";
 
 const Auth = () => {
@@ -15,49 +15,46 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Initialize demo data
-  useState(() => {
-    initializeDemoData();
-  });
+  // Initialize admin user
+  useEffect(() => {
+    initializeAdmin();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate input
-      const validated = loginSchema.parse({ pseudo, code });
+      if (!pseudo || !code) {
+        toast.error("Veuillez remplir tous les champs");
+        return;
+      }
 
       // Check if user exists
-      let user = userStorage.getByPseudo(validated.pseudo);
+      const user = userStorage.getByPseudo(pseudo);
 
       if (!user) {
-        // Create new user if doesn't exist
-        user = userStorage.create({
-          pseudo: validated.pseudo,
-          code: validated.code,
-        });
-        toast.success(`Compte créé ! Bienvenue ${validated.pseudo} ! 🎉`);
-      } else {
-        // Verify code
-        if (user.code !== validated.code) {
-          toast.error("Code incorrect");
-          setIsLoading(false);
-          return;
-        }
-        toast.success(`Rebonjour ${validated.pseudo} !`);
+        toast.error("Identifiants incorrects");
+        setIsLoading(false);
+        return;
       }
+
+      // Verify password
+      const isValidPassword = await verifyPassword(code, user.code);
+      
+      if (!isValidPassword) {
+        toast.error("Identifiants incorrects");
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success(`Bienvenue ${user.pseudo} !`);
 
       // Save current user
       currentUserStorage.set(user);
       navigate("/feed");
     } catch (error) {
-      if (error instanceof ZodError) {
-        const firstError = error.issues[0];
-        toast.error(firstError.message);
-      } else {
-        toast.error("Une erreur est survenue");
-      }
+      toast.error("Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +121,7 @@ const Auth = () => {
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">
-              Réseau 100% local et sécurisé • Nouveau ? Un compte sera créé automatiquement
+              Réseau 100% local et sécurisé • Accès réservé aux membres
             </p>
           </form>
         </CardContent>

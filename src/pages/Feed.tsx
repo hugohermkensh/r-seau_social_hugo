@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2, Shield } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ZodError } from "zod";
@@ -12,6 +12,7 @@ import StoryCircle from "@/components/StoryCircle";
 import StoryViewer from "@/components/StoryViewer";
 import CreateStory from "@/components/CreateStory";
 import { currentUserStorage, postStorage, storyStorage, userStorage, messageStorage } from "@/lib/storage";
+import { isAdmin } from "@/lib/auth";
 import { postCreateSchema, commentCreateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
 
@@ -181,7 +182,6 @@ const Feed = () => {
 
   const handleLogout = () => {
     currentUserStorage.clear();
-    toast.success("À bientôt !");
     navigate("/");
   };
 
@@ -195,14 +195,26 @@ const Feed = () => {
           <h1 className="text-2xl font-bold glow-text bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Réseau Potes
           </h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleLogout}
-            className="hover:bg-destructive/20 hover:text-destructive transition-all"
-          >
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {user && isAdmin(user.id) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/admin")}
+                className="hover:bg-primary/10 transition-all duration-300"
+              >
+                <Shield className="h-5 w-5" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="hover:bg-destructive/10 hover:text-destructive transition-all duration-300"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </header>
 

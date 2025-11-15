@@ -5,10 +5,11 @@ import { z } from "zod";
 export const userSchema = z.object({
   id: z.string(),
   pseudo: z.string().min(2).max(20),
-  code: z.string().min(4).max(50),
+  code: z.string().min(8).max(200), // Hashed password
   avatar: z.string().optional(),
   bio: z.string().max(200).optional(),
   createdAt: z.string(),
+  role: z.enum(["user", "admin"]).default("user"),
 });
 
 export const postSchema = z.object({
@@ -115,11 +116,28 @@ export const userStorage = {
       ...user,
       id: `user_${Date.now()}`,
       createdAt: new Date().toISOString(),
+      role: user.role || 'user',
     };
     const validated = userSchema.parse(newUser);
     users.push(validated);
     saveToStorage(STORAGE_KEYS.USERS, users);
     return validated;
+  },
+  
+  delete: (id: string): boolean => {
+    const users = getFromStorage<User>(STORAGE_KEYS.USERS);
+    const filtered = users.filter(u => u.id !== id);
+    if (filtered.length === users.length) return false;
+    saveToStorage(STORAGE_KEYS.USERS, filtered);
+    return true;
+  },
+  
+  getUserStats: (userId: string): { posts: number; likes: number; comments: number } => {
+    const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
+    const userPosts = posts.filter(p => p.authorId === userId);
+    const likes = userPosts.reduce((acc, p) => acc + p.likes.length, 0);
+    const comments = userPosts.reduce((acc, p) => acc + p.comments.length, 0);
+    return { posts: userPosts.length, likes, comments };
   },
   
   update: (id: string, updates: Partial<User>): User | null => {
@@ -391,18 +409,20 @@ export const currentUserStorage = {
   },
 };
 
-// Initialize demo data
-export const initializeDemoData = () => {
+// Initialize admin user
+export const initializeAdmin = async () => {
   const users = userStorage.getAll();
-  if (users.length === 0) {
-    // Create demo users
-    const demoUsers = [
-      { pseudo: "Alex", code: "demo1234" },
-      { pseudo: "Sarah", code: "demo1234" },
-      { pseudo: "Tom", code: "demo1234" },
-      { pseudo: "Emma", code: "demo1234" },
-    ];
+  const adminExists = users.some(u => u.role === 'admin');
+  
+  if (!adminExists) {
+    // Import dynamically to avoid circular dependency
+    const { hashPassword } = await import('./auth');
+    const hashedPassword = await hashPassword('Hugo1981100??');
     
-    demoUsers.forEach(user => userStorage.create(user));
+    userStorage.create({
+      pseudo: 'admin',
+      code: hashedPassword,
+      role: 'admin',
+    });
   }
 };
