@@ -9,8 +9,10 @@ Bienvenue sur **Réseau Potes**, votre réseau social privé conçu pour rester 
 ## ✨ Fonctionnalités Principales
 
 ### 🔐 **Authentification Sécurisée**
-- **Connexion simple** : Pseudo + Code d'accès (minimum 4 caractères)
-- **Création automatique** : Si ton pseudo n'existe pas, un compte est créé
+- **Connexion sécurisée** : Pseudo + Mot de passe (minimum 8 caractères)
+- **Accès restreint** : Seuls les utilisateurs enregistrés peuvent se connecter
+- **Chiffrement** : Mots de passe hashés avec bcrypt (SALT_ROUNDS = 10)
+- **Admin** : Compte administrateur par défaut (pseudo: "admin")
 - **Stockage local** : Toutes les données restent sur ta machine
 - **Validation robuste** : Protection contre les injections et erreurs
 
@@ -48,6 +50,13 @@ Bienvenue sur **Réseau Potes**, votre réseau social privé conçu pour rester 
 - **Historique** : Tous tes posts en un coup d'œil
 - **Avatar** : Initiales personnalisées avec gradient futuriste
 
+### 👮 **Administration (Admins uniquement)**
+- **Gestion des utilisateurs** : Créer et supprimer des comptes
+- **Attribution des rôles** : Définir admin ou utilisateur simple
+- **Statistiques** : Vue d'ensemble de tous les utilisateurs
+- **Sécurité** : Mots de passe chiffrés à la création
+- **Accès protégé** : Page accessible uniquement aux administrateurs
+
 ---
 
 ## 🎨 Design Futuriste
@@ -73,7 +82,7 @@ Toutes les entrées utilisateur sont validées avec **Zod** :
 
 1. **Authentification**
    - Pseudo : 2-20 caractères, alphanumériques + tirets
-   - Code : 4-50 caractères minimum
+   - Mot de passe : 8-200 caractères (hashé avec bcrypt)
 
 2. **Publications**
    - Posts : 1-1000 caractères
@@ -95,6 +104,9 @@ Toutes les entrées utilisateur sont validées avec **Zod** :
 - **XSS Prevention** : Pas de `dangerouslySetInnerHTML`
 - **Type Safety** : TypeScript pour éviter les erreurs
 - **Error Handling** : Messages d'erreur clairs et informatifs
+- **Password Hashing** : Bcrypt avec 10 rounds de salage
+- **Protected Routes** : Pages protégées par authentification
+- **Role-Based Access** : Contrôle d'accès basé sur les rôles
 
 ---
 
@@ -120,13 +132,20 @@ Tout est stocké dans `localStorage` avec préfixe `reseau_potes_` :
 
 ## 🚀 Utilisation
 
-### 1️⃣ Première Connexion
+### 1️⃣ Première Connexion (Utilisateur)
 ```
 1. Lance l'application
-2. Entre ton pseudo (ex: "Alex")
-3. Crée un code (ex: "demo1234")
+2. Demande à un administrateur de créer ton compte
+3. Entre ton pseudo et ton mot de passe
 4. Clique sur "Se connecter"
-→ Ton compte est créé automatiquement !
+→ Tu es connecté !
+```
+
+### 1️⃣ bis Compte Administrateur par Défaut
+```
+Pseudo: admin
+Mot de passe: Hugo1981100??
+→ Utilise ce compte pour créer les autres utilisateurs
 ```
 
 ### 2️⃣ Créer du Contenu
@@ -140,11 +159,20 @@ Tout est stocké dans `localStorage` avec préfixe `reseau_potes_` :
 ### 3️⃣ Interagir
 ```
 • Like : Clique sur le cœur d'un post
-• Commenter : Clique sur l'icône commentaire
-• Voir story : Clique sur un cercle d'avatar
-• Participer : Événement → "Participer"
+• Commenter : Clique sur l'icône message → Écris
+• Voir une story : Clique sur un avatar avec glow
+• Participer à un événement : Clique sur "Participer"
 ```
 
+### 4️⃣ Administration (Admins uniquement)
+```
+1. Connecte-toi avec un compte admin
+2. Clique sur l'icône Shield (🛡️) dans le header
+3. Accède au panneau d'administration
+4. Crée de nouveaux utilisateurs avec "Créer un utilisateur"
+5. Attribue les rôles (Admin ou Utilisateur)
+6. Gère les comptes (suppression si nécessaire)
+→ Les mots de passe sont automatiquement chiffrés !
 ### 4️⃣ Personnaliser
 ```
 • Profil : Icône utilisateur → Bouton éditer
@@ -199,6 +227,7 @@ Tout est stocké dans `localStorage` avec préfixe `reseau_potes_` :
 - **Storage** : LocalStorage
 - **Icons** : Lucide React
 - **Toasts** : Sonner
+- **Security** : bcryptjs (Password Hashing)
 
 ---
 
@@ -212,14 +241,21 @@ Tout est stocké dans `localStorage` avec préfixe `reseau_potes_` :
 
 ---
 
-## 🤝 Contribuer
+## 🤝 Créer des Comptes
 
-### Comptes de Démo
-Utilisateurs pré-créés pour tester :
-- **Alex** / code: `demo1234`
-- **Sarah** / code: `demo1234`
-- **Tom** / code: `demo1234`
-- **Emma** / code: `demo1234`
+### Compte Administrateur par Défaut
+Un compte admin est créé automatiquement au premier lancement :
+- **Pseudo** : `admin`
+- **Mot de passe** : `Hugo1981100??`
+
+⚠️ **Important** : Connecte-toi avec ce compte pour créer les autres utilisateurs !
+
+### Créer de Nouveaux Utilisateurs
+1. Connecte-toi en tant qu'admin
+2. Clique sur l'icône Shield (🛡️) dans le header
+3. Clique sur "Créer un utilisateur"
+4. Remplis les informations (pseudo, mot de passe, rôle)
+5. Le mot de passe sera automatiquement chiffré
 
 ### Développement Local
 ```bash
@@ -238,7 +274,11 @@ npm run build
 ## 🐛 Résolution de Problèmes
 
 ### Je ne peux pas me connecter
-→ Vérifie que ton code fait au moins 4 caractères
+→ Vérifie que ton compte existe (demande à un admin de le créer)
+→ Le mot de passe doit faire au moins 8 caractères
+
+### Je n'ai pas accès à la page d'administration
+→ Seuls les comptes avec le rôle "admin" peuvent y accéder
 
 ### Mes stories ne s'affichent pas
 → Elles expirent après 24h, crée-en une nouvelle
