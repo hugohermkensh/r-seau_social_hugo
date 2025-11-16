@@ -8,54 +8,114 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Futuristic Dark Theme - Blue/Black */
-    --background: 220 25% 5%;
-    --foreground: 200 100% 95%;
+    /* Modern Social Network Theme - Clean & Professional */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
 
-    --card: 220 20% 8%;
-    --card-foreground: 200 100% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 220 25% 6%;
-    --popover-foreground: 200 100% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Electric blue primary */
-    --primary: 200 100% 60%;
-    --primary-foreground: 220 25% 5%;
-    --primary-glow: 200 100% 70%;
+    /* Instagram-inspired gradient blue */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 221 83% 48%;
 
-    /* Dark secondary surfaces */
-    --secondary: 220 15% 12%;
-    --secondary-foreground: 200 90% 85%;
+    /* Soft gray surfaces */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 200 20% 60%;
+    --muted: 210 20% 95%;
+    --muted-foreground: 215 16% 47%;
 
-    /* Accent cyan/teal */
-    --accent: 180 100% 50%;
-    --accent-foreground: 220 25% 5%;
+    /* Purple accent */
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 18%;
-    --input: 220 20% 12%;
-    --ring: 200 100% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(200 100% 60%), hsl(180 100% 50%));
-    --gradient-dark: linear-gradient(180deg, hsl(220 25% 5%), hsl(220 20% 8%));
-    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(200 100% 60% / 0.15), transparent 70%);
+    /* Gradients - Instagram/Twitter style */
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(262 83% 58%));
+    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 98%));
+    --gradient-hover: linear-gradient(135deg, hsl(221 83% 48%), hsl(262 83% 53%));
 
-    /* Shadows with glow */
-    --shadow-glow: 0 0 30px hsl(200 100% 60% / 0.3);
-    --shadow-card: 0 8px 32px hsl(220 25% 2% / 0.5);
-    --shadow-intense: 0 0 60px hsl(200 100% 60% / 0.5);
+    /* Soft shadows - modern look */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
 
-    /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    /* Smooth transitions */
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
+  .dark {
+    /* Modern Dark Mode - Twitter/Discord inspired */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 221 83% 58%;
+
+    --secondary: 217 33% 21%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 21%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 33% 24%;
+    --input: 217 33% 21%;
+    --ring: 221 83% 53%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(262 83% 58%));
+    --gradient-soft: linear-gradient(180deg, hsl(222 47% 11%), hsl(217 33% 17%));
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5);
+
+    --sidebar-background: 217 33% 17%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 21%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 24%;
+    --sidebar-ring: 221 83% 53%;
   }
 }
 
@@ -66,53 +126,53 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(180deg, hsl(220 25% 5%), hsl(220 20% 8%));
     min-height: 100vh;
   }
 
-  /* Futuristic glow effects */
-  .glow-text {
-    text-shadow: 0 0 20px hsl(var(--primary) / 0.5);
+  /* Modern card effects */
+  .card-hover {
+    transition: var(--transition-smooth);
   }
 
-  .glow-border {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3), inset 0 0 20px hsl(var(--primary) / 0.1);
+  .card-hover:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
   }
 
   .glass-effect {
-    background: hsl(var(--card) / 0.5);
-    backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--border) / 0.3);
+    background: hsl(var(--card) / 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--border));
   }
 
-  /* Scrollbar styling */
+  /* Modern scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(var(--muted));
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--primary) / 0.3);
-    border-radius: 4px;
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.5);
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
-  /* Custom animations */
-  @keyframes pulse-glow {
+  /* Smooth animations */
+  @keyframes pulse-subtle {
     0%, 100% {
       opacity: 1;
-      filter: brightness(1);
+      transform: scale(1);
     }
     50% {
-      opacity: 0.8;
-      filter: brightness(1.2);
+      opacity: 0.9;
+      transform: scale(1.02);
     }
   }
 
@@ -154,12 +214,12 @@ All colors MUST be HSL.
     }
   }
 
-  @keyframes glow-pulse {
+  @keyframes shadow-pulse {
     0%, 100% {
-      box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+      box-shadow: var(--shadow-md);
     }
     50% {
-      box-shadow: 0 0 40px hsl(var(--primary) / 0.6);
+      box-shadow: var(--shadow-lg);
     }
   }
 
