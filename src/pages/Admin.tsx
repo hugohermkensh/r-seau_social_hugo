@@ -89,6 +89,24 @@ const Admin = () => {
     }
   };
 
+  const handleReset = async () => {
+    const password = prompt("⚠️ ATTENTION: Cette action effacera TOUTES les données sauf les comptes utilisateurs.\n\nEntrez le mot de passe admin pour continuer:");
+    
+    if (!password) return;
+
+    if (password !== "admin2024") {
+      toast.error("Mot de passe incorrect");
+      return;
+    }
+
+    if (confirm("Êtes-vous ABSOLUMENT certain de vouloir supprimer tous les posts, stories, messages et groupes ?")) {
+      const { resetAllContent } = await import("@/lib/storage");
+      resetAllContent(true);
+      toast.success("Toutes les données ont été effacées (comptes préservés)");
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -114,13 +132,22 @@ const Admin = () => {
             </div>
           </div>
 
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 glow-border">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Créer un utilisateur
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleReset}
+              variant="destructive"
+              className="hover:opacity-90"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              RESET Total
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 glow-border">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Créer un utilisateur
+                </Button>
+              </DialogTrigger>
             <DialogContent className="glass-effect border-primary/30">
               <DialogHeader>
                 <DialogTitle className="glow-text">Créer un nouvel utilisateur</DialogTitle>
@@ -177,6 +204,7 @@ const Admin = () => {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* Users Table */}

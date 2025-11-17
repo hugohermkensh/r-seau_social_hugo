@@ -54,7 +54,24 @@ export const messageCreateSchema = z.object({
     .min(1, "Le message ne peut pas être vide")
     .max(2000, "Le message ne peut pas dépasser 2000 caractères")
     .trim(),
-  receiverId: z.string().min(1, "Destinataire requis"),
+  receiverId: z.string().min(1, "Destinataire requis").optional(),
+  groupId: z.string().optional(),
+}).refine(
+  (data) => data.receiverId || data.groupId,
+  "Un destinataire ou un groupe est requis"
+);
+
+// Group validation
+export const groupCreateSchema = z.object({
+  name: z.string()
+    .min(1, "Le nom ne peut pas être vide")
+    .max(50, "Le nom ne peut pas dépasser 50 caractères")
+    .trim(),
+  description: z.string()
+    .max(200, "La description ne peut pas dépasser 200 caractères")
+    .trim()
+    .optional(),
+  members: z.array(z.string()).min(1, "Au moins un membre est requis"),
 });
 
 // Event validation

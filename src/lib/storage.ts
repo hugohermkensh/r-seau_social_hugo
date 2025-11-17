@@ -43,10 +43,21 @@ export const storySchema = z.object({
 export const messageSchema = z.object({
   id: z.string(),
   senderId: z.string(),
-  receiverId: z.string(),
+  receiverId: z.string().optional(), // Optional for group messages
+  groupId: z.string().optional(), // For group messages
   content: z.string().min(1).max(2000),
   timestamp: z.string(),
   read: z.boolean(),
+});
+
+export const groupSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(50),
+  description: z.string().max(200).optional(),
+  members: z.array(z.string()),
+  createdBy: z.string(),
+  createdAt: z.string(),
+  avatar: z.string().optional(),
 });
 
 export const eventSchema = z.object({
@@ -61,11 +72,12 @@ export const eventSchema = z.object({
   timestamp: z.string(),
 });
 
-type User = z.infer<typeof userSchema>;
-type Post = z.infer<typeof postSchema>;
-type Story = z.infer<typeof storySchema>;
-type Message = z.infer<typeof messageSchema>;
-type Event = z.infer<typeof eventSchema>;
+export type User = z.infer<typeof userSchema>;
+export type Post = z.infer<typeof postSchema>;
+export type Story = z.infer<typeof storySchema>;
+export type Message = z.infer<typeof messageSchema>;
+export type Event = z.infer<typeof eventSchema>;
+export type Group = z.infer<typeof groupSchema>;
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -73,6 +85,7 @@ const STORAGE_KEYS = {
   POSTS: 'reseau_potes_posts',
   STORIES: 'reseau_potes_stories',
   MESSAGES: 'reseau_potes_messages',
+  GROUPS: 'reseau_potes_groups',
   EVENTS: 'reseau_potes_events',
   CURRENT_USER: 'reseau_potes_current_user',
 } as const;
@@ -276,9 +289,17 @@ export const messageStorage = {
   getConversation: (user1Id: string, user2Id: string): Message[] => {
     const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
     return messages.filter(m => 
-      (m.senderId === user1Id && m.receiverId === user2Id) ||
-      (m.senderId === user2Id && m.receiverId === user1Id)
+      !m.groupId && (
+        (m.senderId === user1Id && m.receiverId === user2Id) ||
+        (m.senderId === user2Id && m.receiverId === user1Id)
+      )
     ).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  },
+
+  getGroupMessages: (groupId: string): Message[] => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    return messages.filter(m => m.groupId === groupId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   },
   
   getUnreadCount: (userId: string): number => {
@@ -288,12 +309,12 @@ export const messageStorage = {
   
   getConversations: (userId: string): { userId: string, lastMessage: Message, unreadCount: number }[] => {
     const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
-    const userMessages = messages.filter(m => m.senderId === userId || m.receiverId === userId);
+    const userMessages = messages.filter(m => !m.groupId && (m.senderId === userId || m.receiverId === userId));
     
     const conversations = new Map<string, { lastMessage: Message, unreadCount: number }>();
     
     userMessages.forEach(msg => {
-      const otherId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      const otherId = msg.senderId === userId ? msg.receiverId! : msg.senderId;
       const existing = conversations.get(otherId);
       
       if (!existing || new Date(msg.timestamp) > new Date(existing.lastMessage.timestamp)) {
@@ -387,6 +408,80 @@ export const eventStorage = {
     saveToStorage(STORAGE_KEYS.EVENTS, filtered);
     return true;
   },
+};
+
+// Group management
+export const groupStorage = {
+  getAll: (): Group[] => getFromStorage<Group>(STORAGE_KEYS.GROUPS),
+
+  getById: (id: string): Group | undefined => {
+    const groups = getFromStorage<Group>(STORAGE_KEYS.GROUPS);
+    return groups.find(g => g.id === id);
+  },
+
+  getUserGroups: (userId: string): Group[] => {
+    const groups = getFromStorage<Group>(STORAGE_KEYS.GROUPS);
+    return groups.filter(g => g.members.includes(userId))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+
+  create: (group: Omit<Group, 'id' | 'createdAt'>): Group => {
+    const groups = getFromStorage<Group>(STORAGE_KEYS.GROUPS);
+    const newGroup: Group = {
+      ...group,
+      id: `group_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    const validated = groupSchema.parse(newGroup);
+    groups.push(validated);
+    saveToStorage(STORAGE_KEYS.GROUPS, groups);
+    return validated;
+  },
+
+  addMember: (groupId: string, userId: string): Group | null => {
+    const groups = getFromStorage<Group>(STORAGE_KEYS.GROUPS);
+    const index = groups.findIndex(g => g.id === groupId);
+    if (index === -1) return null;
+
+    if (!groups[index].members.includes(userId)) {
+      groups[index].members.push(userId);
+      saveToStorage(STORAGE_KEYS.GROUPS, groups);
+    }
+    return groups[index];
+  },
+
+  removeMember: (groupId: string, userId: string): Group | null => {
+    const groups = getFromStorage<Group>(STORAGE_KEYS.GROUPS);
+    const index = groups.findIndex(g => g.id === groupId);
+    if (index === -1) return null;
+
+    groups[index].members = groups[index].members.filter(m => m !== userId);
+    saveToStorage(STORAGE_KEYS.GROUPS, groups);
+    return groups[index];
+  },
+
+  delete: (groupId: string): boolean => {
+    const groups = getFromStorage<Group>(STORAGE_KEYS.GROUPS);
+    const filtered = groups.filter(g => g.id !== groupId);
+    if (filtered.length === groups.length) return false;
+    saveToStorage(STORAGE_KEYS.GROUPS, filtered);
+    // Also delete all messages from this group
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    const filteredMessages = messages.filter(m => m.groupId !== groupId);
+    saveToStorage(STORAGE_KEYS.MESSAGES, filteredMessages);
+    return true;
+  },
+};
+
+// Reset function (for admin)
+export const resetAllContent = (keepUsers: boolean = true): void => {
+  saveToStorage(STORAGE_KEYS.POSTS, []);
+  saveToStorage(STORAGE_KEYS.STORIES, []);
+  saveToStorage(STORAGE_KEYS.MESSAGES, []);
+  saveToStorage(STORAGE_KEYS.GROUPS, []);
+  if (!keepUsers) {
+    saveToStorage(STORAGE_KEYS.USERS, []);
+  }
 };
 
 // Current user

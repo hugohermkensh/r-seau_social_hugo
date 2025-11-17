@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2, Shield, Plus } from "lucide-react";
+import { Heart, MessageCircle, Send, Home, User, MessageSquare, LogOut, Calendar as CalendarIcon, Trash2, Shield, Plus, Terminal as TerminalIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ZodError } from "zod";
@@ -209,15 +209,26 @@ const Feed = () => {
           </h1>
           <div className="flex items-center gap-2">
             {user && isAdmin(user.id) && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/admin")}
-                className="hover:bg-secondary"
-                title="Administration"
-              >
-                <Shield className="h-5 w-5" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/admin")}
+                  className="hover:bg-secondary"
+                  title="Administration"
+                >
+                  <Shield className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/terminal")}
+                  className="hover:bg-secondary"
+                  title="Terminal de gestion"
+                >
+                  <TerminalIcon className="h-5 w-5" />
+                </Button>
+              </>
             )}
             <Button
               variant="ghost"
