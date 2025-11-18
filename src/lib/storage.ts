@@ -145,12 +145,14 @@ export const userStorage = {
     return true;
   },
   
-  getUserStats: (userId: string): { posts: number; likes: number; comments: number } => {
+  getUserStats: (userId: string): { posts: number; likes: number; comments: number; stories: number } => {
     const posts = getFromStorage<Post>(STORAGE_KEYS.POSTS);
     const userPosts = posts.filter(p => p.authorId === userId);
     const likes = userPosts.reduce((acc, p) => acc + p.likes.length, 0);
     const comments = userPosts.reduce((acc, p) => acc + p.comments.length, 0);
-    return { posts: userPosts.length, likes, comments };
+    const stories = getFromStorage<Story>(STORAGE_KEYS.STORIES);
+    const userStories = stories.filter(s => s.authorId === userId);
+    return { posts: userPosts.length, likes, comments, stories: userStories.length };
   },
   
   update: (id: string, updates: Partial<User>): User | null => {
@@ -286,6 +288,8 @@ export const storyStorage = {
 
 // Message management
 export const messageStorage = {
+  getAll: (): Message[] => getFromStorage<Message>(STORAGE_KEYS.MESSAGES),
+  
   getConversation: (user1Id: string, user2Id: string): Message[] => {
     const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
     return messages.filter(m => 
@@ -475,14 +479,55 @@ export const groupStorage = {
 
 // Reset function (for admin)
 export const resetAllContent = (keepUsers: boolean = true): void => {
-  saveToStorage(STORAGE_KEYS.POSTS, []);
-  saveToStorage(STORAGE_KEYS.STORIES, []);
-  saveToStorage(STORAGE_KEYS.MESSAGES, []);
-  saveToStorage(STORAGE_KEYS.GROUPS, []);
+  localStorage.removeItem(STORAGE_KEYS.POSTS);
+  localStorage.removeItem(STORAGE_KEYS.STORIES);
+  localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+  localStorage.removeItem(STORAGE_KEYS.GROUPS);
+  localStorage.removeItem(STORAGE_KEYS.EVENTS);
+  
   if (!keepUsers) {
-    saveToStorage(STORAGE_KEYS.USERS, []);
+    localStorage.removeItem(STORAGE_KEYS.USERS);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   }
 };
+
+// Function to reset content for a specific user
+export function resetUserContent(userId: string) {
+  // Remove user's posts
+  const posts = postStorage.getAll();
+  const filteredPosts = posts.filter(p => p.authorId !== userId);
+  saveToStorage(STORAGE_KEYS.POSTS, filteredPosts);
+  
+  // Remove user's stories
+  const stories = storyStorage.getAll();
+  const filteredStories = stories.filter(s => s.authorId !== userId);
+  saveToStorage(STORAGE_KEYS.STORIES, filteredStories);
+  
+  // Remove user's messages
+  const messages = messageStorage.getAll();
+  const filteredMessages = messages.filter(m => m.senderId !== userId && m.receiverId !== userId);
+  saveToStorage(STORAGE_KEYS.MESSAGES, filteredMessages);
+  
+  // Remove user from groups and delete groups they created
+  const groups = groupStorage.getAll();
+  const filteredGroups = groups
+    .filter(g => g.createdBy !== userId)
+    .map(g => ({
+      ...g,
+      members: g.members.filter(m => m !== userId)
+    }));
+  saveToStorage(STORAGE_KEYS.GROUPS, filteredGroups);
+  
+  // Remove user from events
+  const events = eventStorage.getAll();
+  const filteredEvents = events
+    .filter(e => e.createdBy !== userId)
+    .map(e => ({
+      ...e,
+      participants: e.participants.filter(p => p !== userId)
+    }));
+  saveToStorage(STORAGE_KEYS.EVENTS, filteredEvents);
+}
 
 // Current user
 export const currentUserStorage = {

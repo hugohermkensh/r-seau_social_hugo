@@ -8,114 +8,117 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Modern Social Network Theme - Clean & Professional */
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    /* Elite Social Network - Unique Premium Design */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Instagram-inspired gradient blue */
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 221 83% 48%;
+    /* Vibrant Cyan-Magenta Gradient Theme */
+    --primary: 180 100% 50%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-hover: 180 100% 45%;
 
-    /* Soft gray surfaces */
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Deep Purple surfaces */
+    --secondary: 263 70% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 64.9%;
 
-    /* Purple accent */
-    --accent: 262 83% 58%;
-    --accent-foreground: 0 0% 100%;
+    /* Electric Magenta accent */
+    --accent: 320 100% 50%;
+    --accent-foreground: 240 10% 3.9%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 221 83% 53%;
+    --border: 240 10% 18%;
+    --input: 240 10% 12%;
+    --ring: 180 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    /* Gradients - Instagram/Twitter style */
-    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(262 83% 58%));
-    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(210 20% 98%));
-    --gradient-hover: linear-gradient(135deg, hsl(221 83% 48%), hsl(262 83% 53%));
+    /* Stunning Gradients - Cyberpunk/Neon style */
+    --gradient-primary: linear-gradient(135deg, hsl(180 100% 50%), hsl(320 100% 50%));
+    --gradient-secondary: linear-gradient(135deg, hsl(263 70% 20%), hsl(240 10% 8%));
+    --gradient-glow: linear-gradient(135deg, hsl(180 100% 50% / 0.3), hsl(320 100% 50% / 0.3));
+    --gradient-hover: linear-gradient(135deg, hsl(180 100% 45%), hsl(320 100% 45%));
 
-    /* Soft shadows - modern look */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    /* Dramatic shadows with color glow */
+    --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 0.6);
+    --shadow-md: 0 4px 8px -1px rgb(0 0 0 / 0.8), 0 0 15px hsl(180 100% 50% / 0.15);
+    --shadow-lg: 0 10px 20px -3px rgb(0 0 0 / 0.9), 0 0 30px hsl(180 100% 50% / 0.2);
+    --shadow-xl: 0 25px 35px -5px rgb(0 0 0 / 0.95), 0 0 50px hsl(320 100% 50% / 0.25);
+    --shadow-neon: 0 0 20px hsl(180 100% 50% / 0.6), 0 0 40px hsl(320 100% 50% / 0.4);
 
-    /* Smooth transitions */
-    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    /* Smooth transitions with bounce */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-glow: all 0.5s ease-in-out;
 
     /* Sidebar colors */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 240 10% 3.9%;
+    --sidebar-accent: 263 70% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 10% 18%;
+    --sidebar-ring: 180 100% 50%;
   }
 
   .dark {
-    /* Modern Dark Mode - Twitter/Discord inspired */
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    /* Already optimized for dark by default */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 8%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 8%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 221 83% 58%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-hover: 180 100% 45%;
 
-    --secondary: 217 33% 21%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 263 70% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217 33% 21%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 262 83% 58%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 320 100% 50%;
+    --accent-foreground: 240 10% 3.9%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217 33% 24%;
-    --input: 217 33% 21%;
-    --ring: 221 83% 53%;
+    --border: 240 10% 18%;
+    --input: 240 10% 12%;
+    --ring: 180 100% 50%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(262 83% 58%));
-    --gradient-soft: linear-gradient(180deg, hsl(222 47% 11%), hsl(217 33% 17%));
+    --gradient-primary: linear-gradient(135deg, hsl(180 100% 50%), hsl(320 100% 50%));
+    --gradient-secondary: linear-gradient(135deg, hsl(263 70% 20%), hsl(240 10% 8%));
     
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5);
+    --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 0.6);
+    --shadow-md: 0 4px 8px -1px rgb(0 0 0 / 0.8), 0 0 15px hsl(180 100% 50% / 0.15);
+    --shadow-lg: 0 10px 20px -3px rgb(0 0 0 / 0.9), 0 0 30px hsl(180 100% 50% / 0.2);
+    --shadow-xl: 0 25px 35px -5px rgb(0 0 0 / 0.95), 0 0 50px hsl(320 100% 50% / 0.25);
 
-    --sidebar-background: 217 33% 17%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 21%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 24%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 240 10% 3.9%;
+    --sidebar-accent: 263 70% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 10% 18%;
+    --sidebar-ring: 180 100% 50%;
   }
 }
 
@@ -129,39 +132,102 @@ All colors MUST be HSL.
     min-height: 100vh;
   }
 
-  /* Modern card effects */
+  /* Elite card effects with neon glow */
   .card-hover {
     transition: var(--transition-smooth);
+    position: relative;
   }
-
+  
   .card-hover:hover {
+    transform: translateY(-4px) scale(1.02);
     box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
+  }
+  
+  .card-hover::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: var(--gradient-primary);
+    border-radius: inherit;
+    opacity: 0;
+    transition: var(--transition-glow);
+    z-index: -1;
+    filter: blur(8px);
+  }
+  
+  .card-hover:hover::before {
+    opacity: 0.5;
   }
 
   .glass-effect {
-    background: hsl(var(--card) / 0.95);
-    backdrop-filter: blur(20px);
-    border: 1px solid hsl(var(--border));
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* Modern scrollbar */
+  .glow-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 30px hsl(180 100% 50% / 0.3);
+  }
+
+  .glow-border {
+    position: relative;
+    box-shadow: var(--shadow-neon);
+  }
+  
+  .glow-border::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background: var(--gradient-primary);
+    border-radius: inherit;
+    opacity: 0.5;
+    z-index: -1;
+    filter: blur(10px);
+  }
+  
+  /* Neon button effect */
+  .neon-button {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .neon-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s;
+  }
+  
+  .neon-button:hover::before {
+    left: 100%;
+  }
+
+  /* Cyberpunk scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 12px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
+    background: hsl(var(--background));
+    border-left: 1px solid hsl(var(--border));
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 3px;
+    background: var(--gradient-primary);
+    border-radius: 10px;
+    border: 2px solid hsl(var(--background));
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    box-shadow: var(--shadow-neon);
   }
 
   /* Smooth animations */
