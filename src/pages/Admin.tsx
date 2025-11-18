@@ -90,20 +90,56 @@ const Admin = () => {
   };
 
   const handleReset = async () => {
-    const password = prompt("⚠️ ATTENTION: Cette action effacera TOUTES les données sauf les comptes utilisateurs.\n\nEntrez le mot de passe admin pour continuer:");
+    const password = prompt("⚠️ ATTENTION CRITIQUE: Cette action effacera TOUTES les données sauf les comptes utilisateurs.\n\n🔐 Entrez le code de sécurité admin pour continuer:");
     
     if (!password) return;
 
-    if (password !== "admin2024") {
-      toast.error("Mot de passe incorrect");
+    if (password !== "131009") {
+      toast.error("❌ Code de sécurité incorrect");
       return;
     }
 
-    if (confirm("Êtes-vous ABSOLUMENT certain de vouloir supprimer tous les posts, stories, messages et groupes ?")) {
+    if (confirm("🚨 CONFIRMATION FINALE 🚨\n\nÊtes-vous ABSOLUMENT CERTAIN de vouloir:\n✗ Supprimer TOUS les posts\n✗ Supprimer TOUTES les stories\n✗ Supprimer TOUS les messages privés\n✗ Supprimer TOUS les groupes\n\n⚠️ Cette action est IRRÉVERSIBLE !\n\nLes comptes utilisateurs seront préservés.")) {
       const { resetAllContent } = await import("@/lib/storage");
       resetAllContent(true);
-      toast.success("Toutes les données ont été effacées (comptes préservés)");
-      window.location.reload();
+      toast.success("✅ Réinitialisation totale effectuée - Tous les contenus ont été effacés (comptes préservés)");
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  };
+  
+  const handleResetUser = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user || userId === currentUser?.id) {
+      toast.error("Action impossible");
+      return;
+    }
+
+    if (confirm(`🗑️ Supprimer TOUT le contenu de ${user.pseudo}?\n\n• Tous ses posts\n• Toutes ses stories\n• Tous ses messages\n• Ses participations aux groupes\n\nLe compte sera préservé mais vidé.`)) {
+      const { resetUserContent } = require("@/lib/storage");
+      resetUserContent(userId);
+      toast.success(`Contenu de ${user.pseudo} effacé`);
+      setUsers(userStorage.getAll());
+    }
+  };
+  
+  const handleToggleRole = (userId: string) => {
+    if (userId === currentUser?.id) {
+      toast.error("Vous ne pouvez pas modifier votre propre rôle");
+      return;
+    }
+    
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const newRole = user.role === "admin" ? "user" : "admin";
+    const updated = userStorage.update(userId, { role: newRole });
+    
+    if (updated) {
+      setUsers(userStorage.getAll());
+      toast.success(`${user.pseudo} est maintenant ${newRole === "admin" ? "administrateur" : "utilisateur"}`);
     }
   };
 
@@ -122,12 +158,12 @@ const Admin = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-primary to-accent rounded-xl glow-border">
+              <div className="p-3 bg-gradient-to-br from-primary to-accent rounded-xl glow-border neon-button">
                 <Shield className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold glow-text">Administration</h1>
-                <p className="text-muted-foreground">Gestion des utilisateurs du réseau</p>
+                <h1 className="text-3xl font-bold glow-text">🛡️ Administration Elite</h1>
+                <p className="text-muted-foreground">Contrôle total du réseau social</p>
               </div>
             </div>
           </div>
@@ -136,16 +172,16 @@ const Admin = () => {
             <Button
               onClick={handleReset}
               variant="destructive"
-              className="hover:opacity-90"
+              className="hover:opacity-90 neon-button glow-border"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              RESET Total
+              🔥 RESET Total
             </Button>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 glow-border">
+                <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 glow-border neon-button">
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Créer un utilisateur
+                  ➕ Créer un utilisateur
                 </Button>
               </DialogTrigger>
             <DialogContent className="glass-effect border-primary/30">
@@ -222,7 +258,7 @@ const Admin = () => {
                   <TableHead>Pseudo</TableHead>
                   <TableHead>Rôle</TableHead>
                   <TableHead>Date de création</TableHead>
-                  <TableHead>Posts</TableHead>
+                  <TableHead>Statistiques</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -237,21 +273,52 @@ const Admin = () => {
                           {user.role === 'admin' ? 'Admin' : 'Utilisateur'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-muted-foreground">
                         {new Date(user.createdAt).toLocaleDateString('fr-FR')}
                       </TableCell>
-                      <TableCell>{userPosts.posts}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1 text-xs">
+                          <span className="text-primary">📝 {userPosts.posts} posts</span>
+                          <span className="text-accent">📖 {userPosts.stories} stories</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">
-                        {user.id !== currentUser?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex gap-1 justify-end">
+                          {user.id !== currentUser?.id && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleRole(user.id)}
+                                className="hover:bg-primary/10 hover:text-primary"
+                                title={user.role === "admin" ? "Rétrograder en utilisateur" : "Promouvoir en admin"}
+                              >
+                                <Shield className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleResetUser(user.id)}
+                                className="hover:bg-destructive/10 hover:text-destructive"
+                                title="Effacer tout le contenu de cet utilisateur"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="hover:bg-destructive/20 hover:text-destructive"
+                                title="Supprimer définitivement le compte"
+                              >
+                                <Trash2 className="h-4 w-4 fill-current" />
+                              </Button>
+                            </>
+                          )}
+                          {user.id === currentUser?.id && (
+                            <Badge variant="secondary" className="text-xs">Vous</Badge>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
