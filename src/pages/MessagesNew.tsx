@@ -5,13 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Send, Users, User } from "lucide-react";
+import { Send, Users, User } from "lucide-react";
 import { toast } from "sonner";
 import { currentUserStorage, userStorage, messageStorage, groupStorage, type Group } from "@/lib/storage";
 import { messageCreateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
 import { ZodError } from "zod";
 import { CreateGroup } from "@/components/CreateGroup";
+import { AppLayout } from "@/components/AppLayout";
 
 const MessagesNew = () => {
   const navigate = useNavigate();

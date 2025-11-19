@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Calendar as CalendarIcon, MapPin, Users, Trash2 } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, MapPin, Users, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { currentUserStorage, eventStorage, userStorage } from "@/lib/storage";
 import { eventCreateSchema } from "@/lib/validators";
 import { formatTimestamp } from "@/lib/utils";
 import { ZodError } from "zod";
+import { AppLayout } from "@/components/AppLayout";
 
 const Calendar = () => {
   const navigate = useNavigate();
@@ -109,21 +110,12 @@ const Calendar = () => {
   }, {});
 
   return (
-    <div className="min-h-screen pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-50 glass-effect border-b border-primary/30 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/feed")}
-              className="hover:bg-primary/20"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
+    <AppLayout>
+      <div className="min-h-screen">
+        {/* Header */}
+        <header className="sticky top-0 z-40 glass-effect border-b border-primary/30 backdrop-blur-xl lg:relative">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <h1 className="text-xl font-bold glow-text">Calendrier</h1>
-          </div>
 
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
