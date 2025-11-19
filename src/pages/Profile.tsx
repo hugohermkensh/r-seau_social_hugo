@@ -6,12 +6,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Edit2, Save, Heart, MessageSquare } from "lucide-react";
+import { Edit2, Save, Heart, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { currentUserStorage, userStorage, postStorage } from "@/lib/storage";
 import { profileUpdateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
 import { ZodError } from "zod";
+import { AppLayout } from "@/components/AppLayout";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -59,21 +60,14 @@ const Profile = () => {
   const totalLikes = userPosts.reduce((sum, post) => sum + post.likes.length, 0);
 
   return (
-    <div className="min-h-screen pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-50 glass-effect border-b border-primary/30 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/feed")}
-            className="hover:bg-primary/20"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold glow-text">Profil</h1>
-        </div>
-      </header>
+    <AppLayout>
+      <div className="min-h-screen">
+        {/* Header */}
+        <header className="sticky top-0 z-40 glass-effect border-b border-primary/30 backdrop-blur-xl lg:relative">
+          <div className="container mx-auto px-4 py-4">
+            <h1 className="text-xl font-bold glow-text">Profil</h1>
+          </div>
+        </header>
 
       <div className="container mx-auto px-4 py-6 max-w-2xl">
         {/* Profile Card */}

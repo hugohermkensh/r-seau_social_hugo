@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Terminal as TerminalIcon, Lock, X } from "lucide-react";
+import { Terminal as TerminalIcon, Lock } from "lucide-react";
 import { userStorage, postStorage, messageStorage, groupStorage, storyStorage, currentUserStorage } from "@/lib/storage";
 import { toast } from "sonner";
+import { AppLayout } from "@/components/AppLayout";
 
 const ADMIN_PASSWORD = "131009";
 
