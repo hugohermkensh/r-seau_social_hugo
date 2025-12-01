@@ -294,6 +294,7 @@ const Calendar = () => {
         )}
       </div>
     </div>
+    </AppLayout>
   );
 };
 
