@@ -9,10 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { userStorage, currentUserStorage } from "@/lib/storage";
 import { hashPassword } from "@/lib/auth";
-import { Shield, UserPlus, Trash2, ArrowLeft } from "lucide-react";
+import { Shield, UserPlus, Trash2, ArrowLeft, Users, MessageSquare, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/AppLayout";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { groupStorage, messageStorage, type Group } from "@/lib/storage";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -25,10 +28,23 @@ const Admin = () => {
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<"user" | "admin">("user");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Group management
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   useEffect(() => {
     setUsers(userStorage.getAll());
+    loadGroups();
   }, []);
+
+  const loadGroups = () => {
+    const allGroups = groupStorage.getAll();
+    setGroups(allGroups);
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +158,52 @@ const Admin = () => {
       setUsers(userStorage.getAll());
       toast.success(`${user.pseudo} est maintenant ${newRole === "admin" ? "administrateur" : "utilisateur"}`);
     }
+  };
+
+  const handleCreateGroup = () => {
+    if (!currentUser || !groupName.trim() || selectedMembers.length === 0) {
+      toast.error("Veuillez remplir tous les champs et sélectionner au moins un membre");
+      return;
+    }
+
+    try {
+      groupStorage.create({
+        name: groupName.trim(),
+        description: groupDescription.trim(),
+        members: [currentUser.id, ...selectedMembers],
+        createdBy: currentUser.id,
+      });
+
+      toast.success(`Groupe "${groupName}" créé avec succès`);
+      setShowCreateGroup(false);
+      setGroupName("");
+      setGroupDescription("");
+      setSelectedMembers([]);
+      loadGroups();
+    } catch (error) {
+      toast.error("Erreur lors de la création du groupe");
+    }
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    if (confirm(`Supprimer le groupe "${group.name}" ?\n\nTous les messages du groupe seront également supprimés.`)) {
+      const success = groupStorage.delete(groupId);
+      if (success) {
+        toast.success("Groupe supprimé avec succès");
+        loadGroups();
+      } else {
+        toast.error("Erreur lors de la suppression du groupe");
+      }
+    }
+  };
+
+  const toggleMember = (userId: string) => {
+    setSelectedMembers(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
   };
 
   return (
@@ -326,6 +388,183 @@ const Admin = () => {
                 })}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+
+        {/* Group Management */}
+        <Card className="glass-effect border-primary/30">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Gestion des groupes
+                </CardTitle>
+                <CardDescription>
+                  Créer et gérer les groupes de discussion
+                </CardDescription>
+              </div>
+              <Dialog open={showCreateGroup} onOpenChange={setShowCreateGroup}>
+                <DialogTrigger asChild>
+                  <Button variant="gradient" size="sm" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Nouveau groupe
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="glass-effect border-primary/30">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 glow-text">
+                      <Users className="w-5 h-5" />
+                      Créer un groupe
+                    </DialogTitle>
+                    <DialogDescription>
+                      Créez un nouveau groupe de discussion
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="groupName">Nom du groupe *</Label>
+                      <Input
+                        id="groupName"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        placeholder="Mon groupe"
+                        maxLength={50}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="groupDescription">Description</Label>
+                      <Textarea
+                        id="groupDescription"
+                        value={groupDescription}
+                        onChange={(e) => setGroupDescription(e.target.value)}
+                        placeholder="Description du groupe"
+                        maxLength={200}
+                        rows={2}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Membres *</Label>
+                      <div className="border border-border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                        {users.map(u => (
+                          <div key={u.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`member-${u.id}`}
+                              checked={selectedMembers.includes(u.id)}
+                              onCheckedChange={() => toggleMember(u.id)}
+                            />
+                            <label htmlFor={`member-${u.id}`} className="text-sm cursor-pointer flex-1">
+                              {u.pseudo}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedMembers.length} membre(s) sélectionné(s)
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowCreateGroup(false)}
+                        className="flex-1"
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        onClick={handleCreateGroup}
+                        variant="gradient"
+                        className="flex-1"
+                        disabled={!groupName.trim() || selectedMembers.length === 0}
+                      >
+                        Créer
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {groups.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Aucun groupe créé</p>
+              ) : (
+                groups.map(group => {
+                  const creator = userStorage.getById(group.createdBy);
+                  const msgCount = messageStorage.getGroupMessages(group.id).length;
+                  return (
+                    <div key={group.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-secondary to-accent">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{group.name}</p>
+                          <div className="flex gap-3 text-sm text-muted-foreground">
+                            <span>{group.members.length} membres</span>
+                            <span>•</span>
+                            <span>{msgCount} messages</span>
+                            <span>•</span>
+                            <span>Créé par {creator?.pseudo || "Inconnu"}</span>
+                          </div>
+                          {group.description && (
+                            <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteGroup(group.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Conversations Statistics */}
+        <Card className="glass-effect border-primary/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Statistiques des messages
+            </CardTitle>
+            <CardDescription>
+              Aperçu de l'activité des discussions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30">
+                <p className="text-sm text-muted-foreground mb-1">Messages privés</p>
+                <p className="text-3xl font-bold glow-text">
+                  {messageStorage.getAll().filter(m => !m.groupId).length}
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-gradient-to-br from-secondary/20 to-accent/20 border border-secondary/30">
+                <p className="text-sm text-muted-foreground mb-1">Messages de groupe</p>
+                <p className="text-3xl font-bold glow-text">
+                  {messageStorage.getAll().filter(m => m.groupId).length}
+                </p>
+              </div>
+              <div className="p-4 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 border border-accent/30">
+                <p className="text-sm text-muted-foreground mb-1">Groupes actifs</p>
+                <p className="text-3xl font-bold glow-text">
+                  {groups.length}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
