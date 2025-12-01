@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { userStorage, currentUserStorage } from "@/lib/storage";
 import { hashPassword } from "@/lib/auth";
-import { Shield, UserPlus, Trash2 } from "lucide-react";
+import { Shield, UserPlus, Trash2, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/AppLayout";
