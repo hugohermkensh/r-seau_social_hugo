@@ -12,6 +12,7 @@ import { messageCreateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
 import { ZodError } from "zod";
 import { CreateGroup } from "@/components/CreateGroup";
+import { StartPrivateChat } from "@/components/StartPrivateChat";
 import { AppLayout } from "@/components/AppLayout";
 
 const MessagesNew = () => {
@@ -177,7 +178,13 @@ const MessagesNew = () => {
           </TabsList>
 
           <TabsContent value="private" className="m-0">
-            <div className="overflow-y-auto h-[calc(100vh-165px)]">
+            <div className="p-2">
+              <StartPrivateChat onUserSelected={(userId) => {
+                setSelectedUserId(userId);
+                setSelectedGroupId(null);
+              }} />
+            </div>
+            <div className="overflow-y-auto h-[calc(100vh-215px)]">
               {conversations.length === 0 ? (
                 <div className="p-8 text-center">
                   <p className="text-muted-foreground">Aucune conversation</p>
