@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Terminal as TerminalIcon, Lock, X } from "lucide-react";
-import { userStorage, postStorage, messageStorage, groupStorage, storyStorage, currentUserStorage } from "@/lib/storage";
+import { Terminal as TerminalIcon, Lock, X, Users, MessageSquare } from "lucide-react";
+import { userStorage, postStorage, messageStorage, groupStorage, storyStorage, currentUserStorage, type Group } from "@/lib/storage";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 
@@ -20,6 +20,7 @@ const Terminal = () => {
     "Entrez 'help' pour voir les commandes disponibles",
     ""
   ]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +35,16 @@ const Terminal = () => {
       inputRef.current.focus();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadGroups();
+    }
+  }, [isAuthenticated]);
+
+  const loadGroups = () => {
+    setGroups(groupStorage.getAll());
+  };
 
   const addToHistory = (text: string) => {
     setHistory(prev => [...prev, text]);
@@ -67,7 +78,11 @@ const Terminal = () => {
         addToHistory("  adduser <pseudo> <password> - Créer un utilisateur");
         addToHistory("  deluser <pseudo> - Supprimer un utilisateur");
         addToHistory("  messages - Statistiques messages");
+        addToHistory("  conversations - Toutes les conversations privées");
         addToHistory("  groups - Liste des groupes");
+        addToHistory("  group <id> - Détails d'un groupe");
+        addToHistory("  creategroup <nom> <id1> <id2> ... - Créer un groupe");
+        addToHistory("  delgroup <id> - Supprimer un groupe");
         addToHistory("  posts - Statistiques publications");
         addToHistory("  stories - Statistiques stories");
         addToHistory("  search <term> - Rechercher un utilisateur");
@@ -139,17 +154,135 @@ const Terminal = () => {
         break;
 
       case 'messages':
-        const allMessages = messageStorage.getConversations(currentUserStorage.get()?.id || '');
+        const totalMessages = messageStorage.getAll();
+        const privateMessages = totalMessages.filter(m => !m.groupId);
+        const groupMessages = totalMessages.filter(m => m.groupId);
         addToHistory(`💬 Statistiques messages:`);
-        addToHistory(`  Conversations: ${allMessages.length}`);
+        addToHistory(`  Total: ${totalMessages.length}`);
+        addToHistory(`  Messages privés: ${privateMessages.length}`);
+        addToHistory(`  Messages de groupe: ${groupMessages.length}`);
+        break;
+
+      case 'conversations':
+        const allMessages = messageStorage.getAll().filter(m => !m.groupId);
+        const convos = new Map<string, { user1: string, user2: string, count: number }>();
+        
+        allMessages.forEach(msg => {
+          const key = [msg.senderId, msg.receiverId].sort().join("-");
+          if (!convos.has(key)) {
+            convos.set(key, { 
+              user1: msg.senderId, 
+              user2: msg.receiverId || "", 
+              count: 0 
+            });
+          }
+          convos.get(key)!.count++;
+        });
+
+        if (convos.size === 0) {
+          addToHistory("Aucune conversation privée");
+        } else {
+          addToHistory(`=== ${convos.size} conversations privées ===`);
+          Array.from(convos.values()).forEach(convo => {
+            const user1 = userStorage.getById(convo.user1);
+            const user2 = userStorage.getById(convo.user2);
+            addToHistory(`  ${user1?.pseudo || "?"} ↔ ${user2?.pseudo || "?"} (${convo.count} messages)`);
+          });
+        }
         break;
 
       case 'groups':
         const groups = groupStorage.getAll();
-        addToHistory(`👥 ${groups.length} groupe(s):`);
-        groups.forEach(g => {
-          addToHistory(`  - ${g.name} (${g.members.length} membres)`);
-        });
+        if (groups.length === 0) {
+          addToHistory("Aucun groupe");
+        } else {
+          addToHistory(`👥 ${groups.length} groupe(s):`);
+          groups.forEach(g => {
+            const creator = userStorage.getById(g.createdBy);
+            const msgCount = messageStorage.getGroupMessages(g.id).length;
+            addToHistory(`  - ${g.name}`);
+            addToHistory(`    ID: ${g.id}`);
+            addToHistory(`    Créateur: ${creator?.pseudo || "Inconnu"}`);
+            addToHistory(`    Membres: ${g.members.length} | Messages: ${msgCount}`);
+          });
+        }
+        break;
+
+      case 'group':
+        if (parts.length < 2) {
+          addToHistory("❌ Usage: group <id>");
+          break;
+        }
+        const groupId = parts[1];
+        const group = groupStorage.getById(groupId);
+        if (!group) {
+          addToHistory(`❌ Groupe ${groupId} introuvable`);
+        } else {
+          const creator = userStorage.getById(group.createdBy);
+          const messages = messageStorage.getGroupMessages(group.id);
+          addToHistory(`=== Détails du groupe ===`);
+          addToHistory(`ID: ${group.id}`);
+          addToHistory(`Nom: ${group.name}`);
+          addToHistory(`Créé par: ${creator?.pseudo || "Inconnu"}`);
+          addToHistory(`Date: ${new Date(group.createdAt).toLocaleString()}`);
+          if (group.description) addToHistory(`Description: ${group.description}`);
+          addToHistory(`\nMembres (${group.members.length}):`);
+          group.members.forEach(memberId => {
+            const member = userStorage.getById(memberId);
+            addToHistory(`  - ${member?.pseudo || "Inconnu"} (${memberId})`);
+          });
+          addToHistory(`\nMessages: ${messages.length}`);
+        }
+        break;
+
+      case 'creategroup':
+        if (parts.length < 3) {
+          addToHistory("❌ Usage: creategroup <nom> <id_membre1> <id_membre2> ...");
+          break;
+        }
+        const groupName = parts[1];
+        const memberIds = parts.slice(2);
+        const currentUser = currentUserStorage.get();
+        if (!currentUser) {
+          addToHistory("❌ Erreur: Utilisateur non connecté");
+          break;
+        }
+        try {
+          const newGroup = groupStorage.create({
+            name: groupName,
+            description: "",
+            members: [currentUser.id, ...memberIds],
+            createdBy: currentUser.id,
+          });
+          addToHistory(`✅ Groupe "${groupName}" créé`);
+          addToHistory(`   ID: ${newGroup.id}`);
+          addToHistory(`   Membres: ${newGroup.members.length}`);
+          loadGroups();
+          toast.success(`Groupe "${groupName}" créé`);
+        } catch (error) {
+          addToHistory("❌ Erreur lors de la création du groupe");
+        }
+        break;
+
+      case 'delgroup':
+        if (parts.length < 2) {
+          addToHistory("❌ Usage: delgroup <id>");
+          break;
+        }
+        const delGroupId = parts[1];
+        const delGroup = groupStorage.getById(delGroupId);
+        if (!delGroup) {
+          addToHistory(`❌ Groupe ${delGroupId} introuvable`);
+          break;
+        }
+        const success = groupStorage.delete(delGroupId);
+        if (success) {
+          addToHistory(`✅ Groupe "${delGroup.name}" supprimé`);
+          loadGroups();
+          toast.success(`Groupe supprimé`);
+        } else {
+          addToHistory(`❌ Erreur lors de la suppression`);
+        }
         break;
 
       case 'posts':
