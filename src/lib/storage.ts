@@ -361,6 +361,17 @@ export const messageStorage = {
     });
     saveToStorage(STORAGE_KEYS.MESSAGES, messages);
   },
+
+  deleteConversation: (userId: string, otherUserId: string): void => {
+    const messages = getFromStorage<Message>(STORAGE_KEYS.MESSAGES);
+    const filtered = messages.filter(m => 
+      !(!m.groupId && (
+        (m.senderId === userId && m.receiverId === otherUserId) ||
+        (m.senderId === otherUserId && m.receiverId === userId)
+      ))
+    );
+    saveToStorage(STORAGE_KEYS.MESSAGES, filtered);
+  },
 };
 
 // Event management
