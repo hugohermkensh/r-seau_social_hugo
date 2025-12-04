@@ -7,15 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { userStorage, currentUserStorage } from "@/lib/storage";
-import { hashPassword } from "@/lib/auth";
-import { Shield, UserPlus, Trash2, ArrowLeft, Users, MessageSquare, Plus } from "lucide-react";
+import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, type Group } from "@/lib/storage";
+import { hashPassword, isAdmin } from "@/lib/auth";
+import { 
+  Shield, UserPlus, Trash2, Users, MessageSquare, Plus, 
+  BarChart3, UserCog, Settings, AlertTriangle, RefreshCw,
+  Eye, Ban, Crown
+} from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/AppLayout";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { groupStorage, messageStorage, type Group } from "@/lib/storage";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/utils";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -36,10 +43,49 @@ const Admin = () => {
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
+  // Stats
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalPosts: 0,
+    totalStories: 0,
+    totalMessages: 0,
+    totalGroups: 0,
+    totalEvents: 0,
+    admins: 0,
+    regularUsers: 0,
+  });
+
   useEffect(() => {
-    setUsers(userStorage.getAll());
+    if (!currentUser || !isAdmin(currentUser.id)) {
+      navigate("/feed");
+      return;
+    }
+    loadData();
+  }, [currentUser, navigate]);
+
+  const loadData = () => {
+    const allUsers = userStorage.getAll();
+    setUsers(allUsers);
     loadGroups();
-  }, []);
+    
+    // Calculate stats
+    const posts = postStorage.getAll();
+    const stories = storyStorage.getAll();
+    const messages = messageStorage.getAll();
+    const allGroups = groupStorage.getAll();
+    const events = eventStorage.getAll();
+    
+    setStats({
+      totalUsers: allUsers.length,
+      totalPosts: posts.length,
+      totalStories: stories.length,
+      totalMessages: messages.length,
+      totalGroups: allGroups.length,
+      totalEvents: events.length,
+      admins: allUsers.filter(u => u.role === "admin").length,
+      regularUsers: allUsers.filter(u => u.role === "user").length,
+    });
+  };
 
   const loadGroups = () => {
     const allGroups = groupStorage.getAll();
@@ -61,23 +107,20 @@ const Admin = () => {
         return;
       }
 
-      // Check if user already exists
       if (userStorage.getByPseudo(newPseudo)) {
         toast.error("Ce pseudo existe déjà");
         return;
       }
 
-      // Hash password
       const hashedPassword = await hashPassword(newPassword);
 
-      // Create user
-      const newUser = userStorage.create({
+      userStorage.create({
         pseudo: newPseudo,
         code: hashedPassword,
         role: newRole,
       });
 
-      setUsers(userStorage.getAll());
+      loadData();
       toast.success(`Utilisateur ${newPseudo} créé avec succès`);
       setIsCreateDialogOpen(false);
       setNewPseudo("");
@@ -101,7 +144,7 @@ const Admin = () => {
 
     if (confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${user.pseudo} ?`)) {
       userStorage.delete(userId);
-      setUsers(userStorage.getAll());
+      loadData();
       toast.success(`Utilisateur ${user.pseudo} supprimé`);
     }
   };
@@ -119,7 +162,7 @@ const Admin = () => {
     if (confirm("🚨 CONFIRMATION FINALE 🚨\n\nÊtes-vous ABSOLUMENT CERTAIN de vouloir:\n✗ Supprimer TOUS les posts\n✗ Supprimer TOUTES les stories\n✗ Supprimer TOUS les messages privés\n✗ Supprimer TOUS les groupes\n\n⚠️ Cette action est IRRÉVERSIBLE !\n\nLes comptes utilisateurs seront préservés.")) {
       const { resetAllContent } = await import("@/lib/storage");
       resetAllContent(true);
-      toast.success("✅ Réinitialisation totale effectuée - Tous les contenus ont été effacés (comptes préservés)");
+      toast.success("✅ Réinitialisation totale effectuée");
       
       setTimeout(() => {
         window.location.reload();
@@ -138,7 +181,7 @@ const Admin = () => {
       const { resetUserContent } = require("@/lib/storage");
       resetUserContent(userId);
       toast.success(`Contenu de ${user.pseudo} effacé`);
-      setUsers(userStorage.getAll());
+      loadData();
     }
   };
   
@@ -155,7 +198,7 @@ const Admin = () => {
     const updated = userStorage.update(userId, { role: newRole });
     
     if (updated) {
-      setUsers(userStorage.getAll());
+      loadData();
       toast.success(`${user.pseudo} est maintenant ${newRole === "admin" ? "administrateur" : "utilisateur"}`);
     }
   };
@@ -179,7 +222,7 @@ const Admin = () => {
       setGroupName("");
       setGroupDescription("");
       setSelectedMembers([]);
-      loadGroups();
+      loadData();
     } catch (error) {
       toast.error("Erreur lors de la création du groupe");
     }
@@ -193,7 +236,7 @@ const Admin = () => {
       const success = groupStorage.delete(groupId);
       if (success) {
         toast.success("Groupe supprimé avec succès");
-        loadGroups();
+        loadData();
       } else {
         toast.error("Erreur lors de la suppression du groupe");
       }
@@ -206,369 +249,496 @@ const Admin = () => {
     );
   };
 
+  if (!currentUser || !isAdmin(currentUser.id)) return null;
+
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/feed")}
-              className="hover:bg-primary/10"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-primary to-accent rounded-xl glow-border neon-button">
-                <Shield className="h-6 w-6 text-primary-foreground" />
+    <AppLayout>
+      <div className="min-h-screen p-4 lg:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-primary to-accent rounded-2xl shadow-neon">
+                <Shield className="h-8 w-8 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold glow-text">🛡️ Administration Elite</h1>
-                <p className="text-muted-foreground">Contrôle total du réseau social</p>
+                <h1 className="text-3xl font-bold glow-text">Administration</h1>
+                <p className="text-muted-foreground">Panneau de contrôle du réseau</p>
               </div>
             </div>
-          </div>
 
-          <div className="flex gap-2">
-            <Button
-              onClick={handleReset}
-              variant="destructive"
-              className="hover:opacity-90 neon-button glow-border"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              🔥 RESET Total
-            </Button>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 glow-border neon-button">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  ➕ Créer un utilisateur
-                </Button>
-              </DialogTrigger>
-            <DialogContent className="glass-effect border-primary/30">
-              <DialogHeader>
-                <DialogTitle className="glow-text">Créer un nouvel utilisateur</DialogTitle>
-                <DialogDescription>
-                  Ajoutez un nouveau membre au réseau social
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pseudo">Pseudo</Label>
-                  <Input
-                    id="pseudo"
-                    value={newPseudo}
-                    onChange={(e) => setNewPseudo(e.target.value)}
-                    placeholder="Pseudo de l'utilisateur"
-                    className="bg-secondary/50 border-border/50"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Mot de passe</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mot de passe (min 8 caractères)"
-                    className="bg-secondary/50 border-border/50"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="role">Rôle</Label>
-                  <Select value={newRole} onValueChange={(value: "user" | "admin") => setNewRole(value)}>
-                    <SelectTrigger className="bg-secondary/50 border-border/50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">Utilisateur</SelectItem>
-                      <SelectItem value="admin">Administrateur</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 glow-border"
-                >
-                  {isLoading ? "Création..." : "Créer l'utilisateur"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-          </div>
-        </div>
-
-        {/* Users Table */}
-        <Card className="glass-effect border-primary/30">
-          <CardHeader>
-            <CardTitle>Utilisateurs ({users.length})</CardTitle>
-            <CardDescription>
-              Liste de tous les membres du réseau
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Pseudo</TableHead>
-                  <TableHead>Rôle</TableHead>
-                  <TableHead>Date de création</TableHead>
-                  <TableHead>Statistiques</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => {
-                  const userPosts = userStorage.getUserStats(user.id);
-                  return (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.pseudo}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                          {user.role === 'admin' ? 'Admin' : 'Utilisateur'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(user.createdAt).toLocaleDateString('fr-FR')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-xs">
-                          <span className="text-primary">📝 {userPosts.posts} posts</span>
-                          <span className="text-accent">📖 {userPosts.stories} stories</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          {user.id !== currentUser?.id && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleToggleRole(user.id)}
-                                className="hover:bg-primary/10 hover:text-primary"
-                                title={user.role === "admin" ? "Rétrograder en utilisateur" : "Promouvoir en admin"}
-                              >
-                                <Shield className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleResetUser(user.id)}
-                                className="hover:bg-destructive/10 hover:text-destructive"
-                                title="Effacer tout le contenu de cet utilisateur"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteUser(user.id)}
-                                className="hover:bg-destructive/20 hover:text-destructive"
-                                title="Supprimer définitivement le compte"
-                              >
-                                <Trash2 className="h-4 w-4 fill-current" />
-                              </Button>
-                            </>
-                          )}
-                          {user.id === currentUser?.id && (
-                            <Badge variant="secondary" className="text-xs">Vous</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Group Management */}
-        <Card className="glass-effect border-primary/30">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Gestion des groupes
-                </CardTitle>
-                <CardDescription>
-                  Créer et gérer les groupes de discussion
-                </CardDescription>
-              </div>
-              <Dialog open={showCreateGroup} onOpenChange={setShowCreateGroup}>
+            <div className="flex flex-wrap gap-2">
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="gradient" size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Nouveau groupe
+                  <Button variant="gradient" className="gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Nouvel utilisateur
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="glass-effect border-primary/30">
                   <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 glow-text">
-                      <Users className="w-5 h-5" />
-                      Créer un groupe
+                    <DialogTitle className="glow-text flex items-center gap-2">
+                      <UserPlus className="w-5 h-5" />
+                      Créer un utilisateur
                     </DialogTitle>
                     <DialogDescription>
-                      Créez un nouveau groupe de discussion
+                      Ajoutez un nouveau membre au réseau social
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <form onSubmit={handleCreateUser} className="space-y-4 mt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="groupName">Nom du groupe *</Label>
+                      <Label htmlFor="pseudo">Pseudo</Label>
                       <Input
-                        id="groupName"
-                        value={groupName}
-                        onChange={(e) => setGroupName(e.target.value)}
-                        placeholder="Mon groupe"
-                        maxLength={50}
+                        id="pseudo"
+                        value={newPseudo}
+                        onChange={(e) => setNewPseudo(e.target.value)}
+                        placeholder="Pseudo de l'utilisateur"
+                        className="bg-secondary/50 border-border/50"
+                        required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="groupDescription">Description</Label>
-                      <Textarea
-                        id="groupDescription"
-                        value={groupDescription}
-                        onChange={(e) => setGroupDescription(e.target.value)}
-                        placeholder="Description du groupe"
-                        maxLength={200}
-                        rows={2}
+                      <Label htmlFor="password">Mot de passe</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Mot de passe (min 8 caractères)"
+                        className="bg-secondary/50 border-border/50"
+                        required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Membres *</Label>
-                      <div className="border border-border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                        {users.map(u => (
-                          <div key={u.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`member-${u.id}`}
-                              checked={selectedMembers.includes(u.id)}
-                              onCheckedChange={() => toggleMember(u.id)}
-                            />
-                            <label htmlFor={`member-${u.id}`} className="text-sm cursor-pointer flex-1">
-                              {u.pseudo}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedMembers.length} membre(s) sélectionné(s)
-                      </p>
+                      <Label htmlFor="role">Rôle</Label>
+                      <Select value={newRole} onValueChange={(value: "user" | "admin") => setNewRole(value)}>
+                        <SelectTrigger className="bg-secondary/50 border-border/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="user">Utilisateur</SelectItem>
+                          <SelectItem value="admin">Administrateur</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowCreateGroup(false)}
-                        className="flex-1"
-                      >
-                        Annuler
-                      </Button>
-                      <Button
-                        onClick={handleCreateGroup}
-                        variant="gradient"
-                        className="flex-1"
-                        disabled={!groupName.trim() || selectedMembers.length === 0}
-                      >
-                        Créer
-                      </Button>
-                    </div>
-                  </div>
+                    <Button 
+                      type="submit" 
+                      disabled={isLoading}
+                      variant="gradient"
+                      className="w-full"
+                    >
+                      {isLoading ? "Création..." : "Créer l'utilisateur"}
+                    </Button>
+                  </form>
                 </DialogContent>
               </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {groups.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Aucun groupe créé</p>
-              ) : (
-                groups.map(group => {
-                  const creator = userStorage.getById(group.createdBy);
-                  const msgCount = messageStorage.getGroupMessages(group.id).length;
-                  return (
-                    <div key={group.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-accent/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-gradient-to-br from-secondary to-accent">
-                          <Users className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">{group.name}</p>
-                          <div className="flex gap-3 text-sm text-muted-foreground">
-                            <span>{group.members.length} membres</span>
-                            <span>•</span>
-                            <span>{msgCount} messages</span>
-                            <span>•</span>
-                            <span>Créé par {creator?.pseudo || "Inconnu"}</span>
-                          </div>
-                          {group.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{group.description}</p>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteGroup(group.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Conversations Statistics */}
-        <Card className="glass-effect border-primary/30">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Statistiques des messages
-            </CardTitle>
-            <CardDescription>
-              Aperçu de l'activité des discussions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30">
-                <p className="text-sm text-muted-foreground mb-1">Messages privés</p>
-                <p className="text-3xl font-bold glow-text">
-                  {messageStorage.getAll().filter(m => !m.groupId).length}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-gradient-to-br from-secondary/20 to-accent/20 border border-secondary/30">
-                <p className="text-sm text-muted-foreground mb-1">Messages de groupe</p>
-                <p className="text-3xl font-bold glow-text">
-                  {messageStorage.getAll().filter(m => m.groupId).length}
-                </p>
-              </div>
-              <div className="p-4 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 border border-accent/30">
-                <p className="text-sm text-muted-foreground mb-1">Groupes actifs</p>
-                <p className="text-3xl font-bold glow-text">
-                  {groups.length}
-                </p>
-              </div>
+              <Button onClick={handleReset} variant="destructive" className="gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Reset total
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-primary">{stats.totalUsers}</p>
+                    <p className="text-xs text-muted-foreground">Utilisateurs</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect border-accent/20 hover:border-accent/40 transition-all">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-accent/20 rounded-lg">
+                    <MessageSquare className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-accent">{stats.totalMessages}</p>
+                    <p className="text-xs text-muted-foreground">Messages</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-primary">{stats.totalPosts}</p>
+                    <p className="text-xs text-muted-foreground">Posts</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect border-accent/20 hover:border-accent/40 transition-all">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-accent/20 rounded-lg">
+                    <Eye className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-accent">{stats.totalStories}</p>
+                    <p className="text-xs text-muted-foreground">Stories</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect border-primary/20 hover:border-primary/40 transition-all">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-primary">{stats.totalGroups}</p>
+                    <p className="text-xs text-muted-foreground">Groupes</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-effect border-accent/20 hover:border-accent/40 transition-all">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-accent/20 rounded-lg">
+                    <Crown className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-accent">{stats.admins}</p>
+                    <p className="text-xs text-muted-foreground">Admins</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <Tabs defaultValue="users" className="space-y-4">
+            <TabsList className="bg-card/50 border border-border/50 p-1">
+              <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <UserCog className="w-4 h-4" />
+                Utilisateurs
+              </TabsTrigger>
+              <TabsTrigger value="groups" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="w-4 h-4" />
+                Groupes
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <MessageSquare className="w-4 h-4" />
+                Messages
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Users Tab */}
+            <TabsContent value="users">
+              <Card className="glass-effect border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCog className="w-5 h-5 text-primary" />
+                    Gestion des utilisateurs
+                  </CardTitle>
+                  <CardDescription>
+                    {stats.totalUsers} utilisateurs • {stats.admins} admins • {stats.regularUsers} membres
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[500px] pr-4">
+                    <div className="space-y-3">
+                      {users.map((user) => {
+                        const userStats = userStorage.getUserStats(user.id);
+                        const isCurrentUser = user.id === currentUser?.id;
+                        
+                        return (
+                          <div
+                            key={user.id}
+                            className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
+                              isCurrentUser 
+                                ? "bg-primary/10 border border-primary/30" 
+                                : "bg-secondary/30 hover:bg-secondary/50 border border-transparent hover:border-border/50"
+                            }`}
+                          >
+                            <Avatar className="h-12 w-12 border-2 border-primary/30">
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold">
+                                {getInitials(user.pseudo)}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold truncate">{user.pseudo}</span>
+                                {user.role === "admin" && (
+                                  <Badge className="bg-accent/20 text-accent border-accent/30">
+                                    <Crown className="w-3 h-3 mr-1" />
+                                    Admin
+                                  </Badge>
+                                )}
+                                {isCurrentUser && (
+                                  <Badge variant="outline" className="text-xs">Vous</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span>{userStats.posts} posts</span>
+                                <span>{userStats.stories} stories</span>
+                                <span>{userStats.likes} likes</span>
+                                <span>Créé le {new Date(user.createdAt).toLocaleDateString('fr-FR')}</span>
+                              </div>
+                            </div>
+                            
+                            {!isCurrentUser && (
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleToggleRole(user.id)}
+                                  className="hover:bg-accent/20 hover:text-accent"
+                                  title={user.role === "admin" ? "Rétrograder" : "Promouvoir admin"}
+                                >
+                                  <Crown className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleResetUser(user.id)}
+                                  className="hover:bg-destructive/20 hover:text-destructive"
+                                  title="Effacer le contenu"
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="hover:bg-destructive/20 hover:text-destructive"
+                                  title="Supprimer le compte"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Groups Tab */}
+            <TabsContent value="groups">
+              <Card className="glass-effect border-primary/20">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5 text-primary" />
+                        Gestion des groupes
+                      </CardTitle>
+                      <CardDescription>
+                        {groups.length} groupes actifs
+                      </CardDescription>
+                    </div>
+                    <Dialog open={showCreateGroup} onOpenChange={setShowCreateGroup}>
+                      <DialogTrigger asChild>
+                        <Button variant="gradient" size="sm" className="gap-2">
+                          <Plus className="w-4 h-4" />
+                          Nouveau groupe
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="glass-effect border-primary/30 max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle className="glow-text flex items-center gap-2">
+                            <Users className="w-5 h-5" />
+                            Créer un groupe
+                          </DialogTitle>
+                          <DialogDescription>
+                            Créez un nouveau groupe de discussion
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 mt-4">
+                          <div className="space-y-2">
+                            <Label>Nom du groupe *</Label>
+                            <Input
+                              value={groupName}
+                              onChange={(e) => setGroupName(e.target.value)}
+                              placeholder="Mon groupe"
+                              maxLength={50}
+                              className="bg-secondary/50"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Textarea
+                              value={groupDescription}
+                              onChange={(e) => setGroupDescription(e.target.value)}
+                              placeholder="Description du groupe..."
+                              className="bg-secondary/50 resize-none"
+                              rows={2}
+                              maxLength={200}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Membres ({selectedMembers.length} sélectionnés)</Label>
+                            <ScrollArea className="h-48 rounded-lg border border-border/50 p-3">
+                              <div className="space-y-2">
+                                {users.filter(u => u.id !== currentUser?.id).map((user) => (
+                                  <div
+                                    key={user.id}
+                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                                    onClick={() => toggleMember(user.id)}
+                                  >
+                                    <Checkbox
+                                      checked={selectedMembers.includes(user.id)}
+                                      onCheckedChange={() => toggleMember(user.id)}
+                                    />
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs">
+                                        {getInitials(user.pseudo)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-medium text-sm">{user.pseudo}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+
+                          <Button
+                            onClick={handleCreateGroup}
+                            disabled={!groupName.trim() || selectedMembers.length === 0}
+                            variant="gradient"
+                            className="w-full"
+                          >
+                            Créer le groupe
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px] pr-4">
+                    {groups.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                        <p className="text-muted-foreground">Aucun groupe créé</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {groups.map((group) => {
+                          const creator = userStorage.getById(group.createdBy);
+                          const messageCount = messageStorage.getGroupMessages(group.id).length;
+                          
+                          return (
+                            <div
+                              key={group.id}
+                              className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 border border-transparent hover:border-border/50 transition-all"
+                            >
+                              <div className="p-3 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl">
+                                <Users className="w-6 h-6 text-primary" />
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-semibold">{group.name}</span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {group.members.length} membres
+                                  </Badge>
+                                </div>
+                                {group.description && (
+                                  <p className="text-sm text-muted-foreground truncate mb-1">
+                                    {group.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span>Créé par {creator?.pseudo || "Inconnu"}</span>
+                                  <span>•</span>
+                                  <span>{messageCount} messages</span>
+                                </div>
+                              </div>
+                              
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteGroup(group.id)}
+                                className="hover:bg-destructive/20 hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Messages Tab */}
+            <TabsContent value="messages">
+              <Card className="glass-effect border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    Statistiques des messages
+                  </CardTitle>
+                  <CardDescription>
+                    Aperçu de l'activité de messagerie
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                      <MessageSquare className="w-8 h-8 text-primary mb-3" />
+                      <p className="text-3xl font-bold text-primary mb-1">{stats.totalMessages}</p>
+                      <p className="text-sm text-muted-foreground">Messages totaux</p>
+                    </div>
+                    
+                    <div className="p-6 rounded-xl bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20">
+                      <Users className="w-8 h-8 text-accent mb-3" />
+                      <p className="text-3xl font-bold text-accent mb-1">{stats.totalGroups}</p>
+                      <p className="text-sm text-muted-foreground">Groupes actifs</p>
+                    </div>
+                    
+                    <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 border border-border/20">
+                      <BarChart3 className="w-8 h-8 text-foreground mb-3" />
+                      <p className="text-3xl font-bold mb-1">
+                        {stats.totalMessages > 0 
+                          ? Math.round(stats.totalMessages / Math.max(stats.totalUsers, 1)) 
+                          : 0
+                        }
+                      </p>
+                      <p className="text-sm text-muted-foreground">Moy. par utilisateur</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 };
 
