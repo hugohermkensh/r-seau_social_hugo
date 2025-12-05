@@ -9,10 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, type Group } from "@/lib/storage";
 import { hashPassword, isAdmin } from "@/lib/auth";
+import { blockStorage } from "@/lib/notifications";
 import { 
   Shield, UserPlus, Trash2, Users, MessageSquare, Plus, 
   BarChart3, UserCog, Settings, AlertTriangle, RefreshCw,
-  Eye, Ban, Crown
+  Eye, Ban, Crown, Lock, Unlock, KeyRound
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,6 +43,13 @@ const Admin = () => {
   const [groupName, setGroupName] = useState("");
   const [groupDescription, setGroupDescription] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  
+  // Block management
+  const [showBlockDialog, setShowBlockDialog] = useState(false);
+  const [blockUserId, setBlockUserId] = useState<string | null>(null);
+  const [blockCode, setBlockCode] = useState("");
+  const [blockReason, setBlockReason] = useState("");
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
 
   // Stats
   const [stats, setStats] = useState({
@@ -67,6 +75,10 @@ const Admin = () => {
     const allUsers = userStorage.getAll();
     setUsers(allUsers);
     loadGroups();
+    
+    // Load blocked users
+    const blocked = blockStorage.getAll();
+    setBlockedUsers(blocked.map(b => b.userId));
     
     // Calculate stats
     const posts = postStorage.getAll();
@@ -247,6 +259,37 @@ const Admin = () => {
     setSelectedMembers(prev =>
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
+  };
+
+  // Block user handlers
+  const handleOpenBlockDialog = (userId: string) => {
+    setBlockUserId(userId);
+    setBlockCode("");
+    setBlockReason("");
+    setShowBlockDialog(true);
+  };
+
+  const handleBlockUser = () => {
+    if (!blockUserId || blockCode.length < 4) {
+      toast.error("Le code doit contenir au moins 4 caractères");
+      return;
+    }
+
+    blockStorage.block(blockUserId, blockCode, blockReason);
+    const user = users.find(u => u.id === blockUserId);
+    toast.success(`${user?.pseudo || "Utilisateur"} a été bloqué`);
+    setShowBlockDialog(false);
+    setBlockUserId(null);
+    setBlockCode("");
+    setBlockReason("");
+    loadData();
+  };
+
+  const handleUnblockUser = (userId: string) => {
+    blockStorage.forceUnblock(userId);
+    const user = users.find(u => u.id === userId);
+    toast.success(`${user?.pseudo || "Utilisateur"} a été débloqué`);
+    loadData();
   };
 
   if (!currentUser || !isAdmin(currentUser.id)) return null;
@@ -490,6 +533,12 @@ const Admin = () => {
                                     Admin
                                   </Badge>
                                 )}
+                                {blockedUsers.includes(user.id) && (
+                                  <Badge className="bg-destructive/20 text-destructive border-destructive/30">
+                                    <Lock className="w-3 h-3 mr-1" />
+                                    Bloqué
+                                  </Badge>
+                                )}
                                 {isCurrentUser && (
                                   <Badge variant="outline" className="text-xs">Vous</Badge>
                                 )}
@@ -504,6 +553,27 @@ const Admin = () => {
                             
                             {!isCurrentUser && (
                               <div className="flex gap-1">
+                                {blockedUsers.includes(user.id) ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleUnblockUser(user.id)}
+                                    className="hover:bg-primary/20 hover:text-primary"
+                                    title="Débloquer"
+                                  >
+                                    <Unlock className="h-4 w-4" />
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleOpenBlockDialog(user.id)}
+                                    className="hover:bg-destructive/20 hover:text-destructive"
+                                    title="Bloquer l'accès"
+                                  >
+                                    <Lock className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -736,6 +806,71 @@ const Admin = () => {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Block User Dialog */}
+          <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>
+            <DialogContent className="glass-effect border-destructive/30">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <Lock className="w-5 h-5" />
+                  Bloquer l'accès utilisateur
+                </DialogTitle>
+                <DialogDescription>
+                  Définissez un code d'accès pour débloquer ce compte ultérieurement.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="blockCode">Code de déblocage</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="blockCode"
+                      type="password"
+                      value={blockCode}
+                      onChange={(e) => setBlockCode(e.target.value)}
+                      placeholder="Code secret (min 4 caractères)"
+                      className="pl-10 bg-secondary/50 border-border/50"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Ce code sera nécessaire pour débloquer le compte
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="blockReason">Raison (optionnel)</Label>
+                  <Textarea
+                    id="blockReason"
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    placeholder="Raison du blocage..."
+                    className="bg-secondary/50 border-border/50 resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowBlockDialog(false)}
+                    className="flex-1"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleBlockUser}
+                    disabled={blockCode.length < 4}
+                    className="flex-1"
+                  >
+                    <Lock className="w-4 h-4 mr-2" />
+                    Bloquer
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </AppLayout>
