@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -7,7 +7,9 @@ import { NavLink } from "@/components/NavLink";
 import { currentUserStorage, messageStorage } from "@/lib/storage";
 import { isAdmin } from "@/lib/auth";
 import { getInitials } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { NotificationCenter } from "@/components/NotificationCenter";
+import { BlockedUserScreen } from "@/components/BlockedUserScreen";
+import { blockStorage } from "@/lib/notifications";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,11 +19,20 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const user = currentUserStorage.get();
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockInfo, setBlockInfo] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       const count = messageStorage.getUnreadCount(user.id);
       setUnreadMessages(count);
+      
+      // Check if user is blocked
+      const blocked = blockStorage.isBlocked(user.id);
+      setIsBlocked(blocked);
+      if (blocked) {
+        setBlockInfo(blockStorage.getBlockInfo(user.id));
+      }
     }
   }, [user]);
 
@@ -30,7 +41,17 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     navigate("/");
   };
 
+  const handleUnblock = () => {
+    setIsBlocked(false);
+    setBlockInfo(null);
+  };
+
   if (!user) return null;
+  
+  // Show blocked screen if user is blocked
+  if (isBlocked && blockInfo) {
+    return <BlockedUserScreen blockInfo={blockInfo} onUnlock={handleUnblock} />;
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -122,6 +143,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
         {/* User Profile + Logout */}
         <div className="p-4 border-t border-border/30">
+          <div className="flex items-center justify-between mb-3">
+            <NotificationCenter />
+          </div>
           <div className="flex items-center gap-3 mb-3 p-3 rounded-xl bg-secondary/30">
             <Avatar className="border-2 border-primary/50 shadow-lg">
               <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-bold text-sm">
@@ -151,6 +175,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             Réseau Potes
           </h1>
           <div className="flex items-center gap-2">
+            <NotificationCenter />
             {user && isAdmin(user.id) && (
               <>
                 <Button

@@ -91,7 +91,7 @@ const STORAGE_KEYS = {
 } as const;
 
 // Generic storage functions
-function getFromStorage<T>(key: string): T[] {
+export function getFromStorage<T>(key: string): T[] {
   try {
     const data = localStorage.getItem(key);
     return data ? JSON.parse(data) : [];
@@ -101,7 +101,7 @@ function getFromStorage<T>(key: string): T[] {
   }
 }
 
-function saveToStorage<T>(key: string, data: T[]): void {
+export function saveToStorage<T>(key: string, data: T[]): void {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (error) {

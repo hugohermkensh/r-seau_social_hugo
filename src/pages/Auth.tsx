@@ -7,12 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { userStorage, currentUserStorage, initializeAdmin } from "@/lib/storage";
 import { verifyPassword } from "@/lib/auth";
+import { blockStorage } from "@/lib/notifications";
+import { BlockedUserScreen } from "@/components/BlockedUserScreen";
 import { ZodError } from "zod";
 
 const Auth = () => {
   const [pseudo, setPseudo] = useState("");
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [blockedUser, setBlockedUser] = useState<any>(null);
   const navigate = useNavigate();
 
   // Initialize admin user
@@ -48,6 +51,14 @@ const Auth = () => {
         return;
       }
 
+      // Check if user is blocked
+      if (blockStorage.isBlocked(user.id)) {
+        const blockInfo = blockStorage.getBlockInfo(user.id);
+        setBlockedUser({ ...blockInfo, user });
+        setIsLoading(false);
+        return;
+      }
+
       toast.success(`Bienvenue ${user.pseudo} !`);
 
       // Save current user
@@ -59,6 +70,20 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  // Show blocked screen if user is blocked
+  if (blockedUser) {
+    return (
+      <BlockedUserScreen 
+        blockInfo={blockedUser} 
+        onUnlock={() => {
+          setBlockedUser(null);
+          currentUserStorage.set(blockedUser.user);
+          navigate("/feed");
+        }} 
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
