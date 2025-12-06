@@ -13,7 +13,7 @@ import { blockStorage } from "@/lib/notifications";
 import { 
   Shield, UserPlus, Trash2, Users, MessageSquare, Plus, 
   BarChart3, UserCog, Settings, AlertTriangle, RefreshCw,
-  Eye, Ban, Crown, Lock, Unlock, KeyRound
+  Eye, Ban, Crown, Lock, Unlock, KeyRound, Database
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
+import { DataSyncManager } from "@/components/DataSyncManager";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -311,6 +312,7 @@ const Admin = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              <DataSyncManager />
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="gradient" className="gap-2">
