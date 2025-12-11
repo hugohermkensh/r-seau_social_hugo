@@ -130,6 +130,24 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Safe area support for notched devices */
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Touch-friendly interactive elements */
+  button, a, [role="button"] {
+    touch-action: manipulation;
   }
 
   /* Elite card effects with neon glow */
