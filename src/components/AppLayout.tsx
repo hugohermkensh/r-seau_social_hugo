@@ -1,15 +1,17 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Home, MessageSquare, Calendar as CalendarIcon, User, LogOut, Shield, Terminal as TerminalIcon } from "lucide-react";
+import { Home, MessageSquare, Calendar as CalendarIcon, User, LogOut, Shield, Terminal as TerminalIcon, Wifi } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { currentUserStorage, messageStorage } from "@/lib/storage";
+import { currentUserStorage, messageStorage, userStorage } from "@/lib/storage";
 import { isAdmin } from "@/lib/auth";
 import { getInitials } from "@/lib/utils";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { BlockedUserScreen } from "@/components/BlockedUserScreen";
 import { blockStorage } from "@/lib/notifications";
+import { useAutoRefresh } from "@/lib/useAutoRefresh";
+import { Badge } from "@/components/ui/badge";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -21,20 +23,30 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockInfo, setBlockInfo] = useState<any>(null);
+  const [onlineCount, setOnlineCount] = useState(0);
 
-  useEffect(() => {
+  const refreshCounts = useCallback(() => {
     if (user) {
       const count = messageStorage.getUnreadCount(user.id);
       setUnreadMessages(count);
+      setOnlineCount(userStorage.getAll().length);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      refreshCounts();
       
-      // Check if user is blocked
       const blocked = blockStorage.isBlocked(user.id);
       setIsBlocked(blocked);
       if (blocked) {
         setBlockInfo(blockStorage.getBlockInfo(user.id));
       }
     }
-  }, [user]);
+  }, [user, refreshCounts]);
+
+  // Auto-refresh unread count
+  useAutoRefresh(refreshCounts, 5000);
 
   const handleLogout = () => {
     currentUserStorage.clear();
@@ -145,16 +157,23 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="p-3 lg:p-4 border-t border-border/30">
           <div className="flex items-center justify-between mb-2 lg:mb-3">
             <NotificationCenter />
+            <Badge variant="outline" className="text-[10px] gap-1 border-primary/30">
+              <Wifi className="w-3 h-3 text-primary" />
+              {onlineCount} membres
+            </Badge>
           </div>
           <div className="flex items-center gap-2 lg:gap-3 mb-2 lg:mb-3 p-2 lg:p-3 rounded-xl bg-secondary/30">
-            <Avatar className="border-2 border-primary/50 shadow-lg w-8 h-8 lg:w-10 lg:h-10">
-              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-bold text-xs lg:text-sm">
+            <Avatar className="border-2 border-primary/50 shadow-lg w-8 h-8 lg:w-10 lg:h-10 status-online">
+              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-bold text-xs lg:text-sm">
                 {getInitials(user.pseudo)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-xs lg:text-sm truncate">{user.pseudo}</p>
-              <p className="text-[10px] lg:text-xs text-muted-foreground">En ligne</p>
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <p className="text-[10px] lg:text-xs text-muted-foreground">En ligne</p>
+              </div>
             </div>
           </div>
           <Button

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { ZodError } from "zod";
 import { CreateGroup } from "@/components/CreateGroup";
 import { StartPrivateChat } from "@/components/StartPrivateChat";
 import { AppLayout } from "@/components/AppLayout";
+import { useAutoRefresh } from "@/lib/useAutoRefresh";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
@@ -55,6 +56,18 @@ const MessagesNew = () => {
     loadConversations();
     loadGroups();
   }, [user, navigate]);
+
+  // Auto-refresh messages every 3 seconds
+  const refreshMessages = useCallback(() => {
+    if (activeTab === "private" && selectedUserId) {
+      loadMessages(selectedUserId);
+    } else if (activeTab === "groups" && selectedGroupId) {
+      loadGroupMessages(selectedGroupId);
+    }
+    loadConversations();
+  }, [activeTab, selectedUserId, selectedGroupId]);
+
+  useAutoRefresh(refreshMessages, 3000);
 
   useEffect(() => {
     if (activeTab === "private" && selectedUserId) {
