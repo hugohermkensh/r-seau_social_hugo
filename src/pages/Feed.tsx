@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, Send, Trash2, Plus, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, Send, Trash2, Plus, Sparkles, Search, RefreshCw } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ZodError } from "zod";
@@ -17,6 +17,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { currentUserStorage, postStorage, storyStorage, userStorage } from "@/lib/storage";
 import { postCreateSchema, commentCreateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
+import { useAutoRefresh, useDebounce } from "@/lib/useAutoRefresh";
+import { sendNotification } from "@/lib/notifications";
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -29,31 +31,15 @@ const Feed = () => {
   const [commentingPostId, setCommentingPostId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/");
-      return;
-    }
-
-    const loadData = async () => {
-      setIsLoading(true);
-      await Promise.all([
-        loadPosts(),
-        loadStories(),
-      ]);
-      setIsLoading(false);
-    };
-
-    loadData();
-  }, [user, navigate]);
-
-  const loadPosts = () => {
+  const loadPosts = useCallback(() => {
     const allPosts = postStorage.getAll();
     setPosts(allPosts);
-  };
+  }, []);
 
-  const loadStories = () => {
+  const loadStories = useCallback(() => {
     const allStories = storyStorage.getAll();
     
     const storyMap = new Map<string, any[]>();
@@ -73,14 +59,37 @@ const Feed = () => {
         userName: author?.pseudo || "Inconnu",
         authorId,
         hasNewStory: hasNew,
-        stories: userStories.sort((a, b) => 
+        stories: userStories.sort((a: any, b: any) => 
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         ),
       };
     });
 
     setStories(grouped);
-  };
+  }, [user]);
+
+  const refreshAll = useCallback(() => {
+    loadPosts();
+    loadStories();
+  }, [loadPosts, loadStories]);
+
+  // Auto-refresh every 5 seconds
+  useAutoRefresh(refreshAll, 5000);
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+      return;
+    }
+
+    const loadData = async () => {
+      setIsLoading(true);
+      refreshAll();
+      setIsLoading(false);
+    };
+
+    loadData();
+  }, [user, navigate, refreshAll]);
 
   const handlePost = () => {
     if (!user) return;
@@ -107,8 +116,16 @@ const Feed = () => {
 
   const handleLike = (postId: string) => {
     if (!user) return;
+    const post = posts.find(p => p.id === postId);
+    const wasLiked = post?.likes.includes(user.id);
+    
     postStorage.toggleLike(postId, user.id);
     loadPosts();
+
+    // Send notification on like
+    if (!wasLiked && post && post.authorId !== user.id) {
+      sendNotification.newLike(post.authorId, user.pseudo);
+    }
   };
 
   const handleComment = (postId: string) => {
@@ -124,6 +141,12 @@ const Feed = () => {
         content: validated.content,
         timestamp: new Date().toISOString(),
       });
+
+      // Send notification
+      const post = posts.find(p => p.id === postId);
+      if (post && post.authorId !== user.id) {
+        sendNotification.newComment(post.authorId, user.pseudo);
+      }
 
       setCommentText("");
       setCommentingPostId(null);
@@ -184,6 +207,14 @@ const Feed = () => {
 
   if (!user) return null;
 
+  // Filter posts by search
+  const filteredPosts = debouncedSearch
+    ? posts.filter(post => 
+        post.content.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        post.author.toLowerCase().includes(debouncedSearch.toLowerCase())
+      )
+    : posts;
+
   return (
     <AppLayout>
       {isLoading ? (
@@ -191,7 +222,7 @@ const Feed = () => {
           <LoadingSpinner size="lg" />
         </div>
       ) : (
-        <div className="container mx-auto px-4 py-6 max-w-2xl">
+        <div className="container mx-auto px-4 py-6 max-w-2xl page-enter">
           {/* Stories Section */}
           <div className="mb-6 overflow-x-auto hide-scrollbar">
             <div className="flex gap-4 pb-2 animate-fade-in">
@@ -212,10 +243,31 @@ const Feed = () => {
             </div>
           </div>
 
+          {/* Search Bar */}
+          <div className="relative mb-4 animate-fade-in">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher des posts ou des auteurs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-secondary/30 border-border/30 focus:border-primary/50 h-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+                onClick={() => setSearchQuery("")}
+              >
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+
           {/* Create Post Card */}
           <Card className="glass-effect border-primary/20 p-5 mb-6 animate-slide-up hover:border-primary/40 transition-all">
             <div className="flex gap-4">
-              <Avatar className="border-2 border-primary/30 shadow-md">
+              <Avatar className="border-2 border-primary/30 shadow-md status-online">
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold">
                   {getInitials(user.pseudo)}
                 </AvatarFallback>
@@ -235,7 +287,7 @@ const Feed = () => {
                     disabled={!newPost.trim()}
                     variant="gradient"
                     size="sm"
-                    className="gap-2"
+                    className="gap-2 ripple-effect"
                   >
                     <Sparkles className="w-4 h-4" />
                     Publier
@@ -247,18 +299,20 @@ const Feed = () => {
 
           {/* Posts Feed */}
           <div className="space-y-4">
-            {posts.length === 0 ? (
+            {filteredPosts.length === 0 ? (
               <EmptyState
-                icon={Plus}
-                title="Aucune publication"
-                description="Sois le premier à partager quelque chose avec tes amis !"
-                action={{
+                icon={searchQuery ? Search : Plus}
+                title={searchQuery ? "Aucun résultat" : "Aucune publication"}
+                description={searchQuery 
+                  ? `Aucun post ne correspond à "${searchQuery}"` 
+                  : "Sois le premier à partager quelque chose avec tes amis !"}
+                action={!searchQuery ? {
                   label: "Créer un post",
                   onClick: () => document.querySelector('textarea')?.focus()
-                }}
+                } : undefined}
               />
             ) : (
-              posts.map((post, index) => (
+              filteredPosts.map((post, index) => (
                 <Card 
                   key={post.id} 
                   className="glass-effect border-primary/10 p-5 hover:border-primary/30 transition-all animate-slide-up"
@@ -300,7 +354,7 @@ const Feed = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleLike(post.id)}
-                      className={`gap-2 transition-all ${
+                      className={`gap-2 transition-all ripple-effect ${
                         post.likes.includes(user.id)
                           ? "text-accent hover:text-accent"
                           : "text-muted-foreground hover:text-accent"
@@ -320,7 +374,7 @@ const Feed = () => {
                       onClick={() => setCommentingPostId(
                         commentingPostId === post.id ? null : post.id
                       )}
-                      className="gap-2 text-muted-foreground hover:text-primary"
+                      className="gap-2 text-muted-foreground hover:text-primary ripple-effect"
                     >
                       <MessageCircle className="w-4 h-4" />
                       <span className="font-medium">{post.comments.length}</span>
@@ -364,6 +418,7 @@ const Feed = () => {
                         disabled={!commentText.trim()}
                         variant="gradient"
                         size="icon"
+                        className="ripple-effect"
                       >
                         <Send className="w-4 h-4" />
                       </Button>
@@ -373,6 +428,13 @@ const Feed = () => {
               ))
             )}
           </div>
+
+          {/* Search results count */}
+          {debouncedSearch && filteredPosts.length > 0 && (
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              {filteredPosts.length} résultat{filteredPosts.length > 1 ? "s" : ""} pour "{debouncedSearch}"
+            </p>
+          )}
         </div>
       )}
 
