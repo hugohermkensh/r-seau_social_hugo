@@ -7,7 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, type Group } from "@/lib/storage";
+import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, resetUserContent, type Group } from "@/lib/storage";
+import { AuditLogViewer } from "@/components/AuditLogViewer";
+import { StorageMonitor } from "@/components/StorageMonitor";
 import { hashPassword, isAdmin } from "@/lib/auth";
 import { blockStorage } from "@/lib/notifications";
 import { 
@@ -191,7 +193,6 @@ const Admin = () => {
     }
 
     if (confirm(`🗑️ Supprimer TOUT le contenu de ${user.pseudo}?\n\n• Tous ses posts\n• Toutes ses stories\n• Tous ses messages\n• Ses participations aux groupes\n\nLe compte sera préservé mais vidé.`)) {
-      const { resetUserContent } = require("@/lib/storage");
       resetUserContent(userId);
       toast.success(`Contenu de ${user.pseudo} effacé`);
       loadData();
@@ -477,7 +478,7 @@ const Admin = () => {
 
           {/* Main Content */}
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="bg-card/50 border border-border/50 p-1">
+            <TabsList className="bg-card/50 border border-border/50 p-1 flex-wrap">
               <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <UserCog className="w-4 h-4" />
                 Utilisateurs
@@ -489,6 +490,10 @@ const Admin = () => {
               <TabsTrigger value="messages" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <MessageSquare className="w-4 h-4" />
                 Messages
+              </TabsTrigger>
+              <TabsTrigger value="security" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Shield className="w-4 h-4" />
+                Sécurité
               </TabsTrigger>
             </TabsList>
 
@@ -806,6 +811,14 @@ const Admin = () => {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* Security Tab */}
+            <TabsContent value="security">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <AuditLogViewer />
+                <StorageMonitor />
+              </div>
             </TabsContent>
           </Tabs>
 

@@ -12,6 +12,9 @@ import { BlockedUserScreen } from "@/components/BlockedUserScreen";
 import { blockStorage } from "@/lib/notifications";
 import { useAutoRefresh } from "@/lib/useAutoRefresh";
 import { Badge } from "@/components/ui/badge";
+import { sessionManager, auditLog } from "@/lib/secureStorage";
+import { startTracking, activityTracker } from "@/lib/activityTracker";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -29,7 +32,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     if (user) {
       const count = messageStorage.getUnreadCount(user.id);
       setUnreadMessages(count);
-      setOnlineCount(userStorage.getAll().length);
+      setOnlineCount(activityTracker.getOnlineCount());
     }
   }, [user]);
 
@@ -37,18 +40,36 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
     if (user) {
       refreshCounts();
       
+      // Validate session
+      if (!sessionManager.isValid()) {
+        currentUserStorage.clear();
+        navigate("/");
+        return;
+      }
+      sessionManager.refresh();
+      
+      // Start activity tracking
+      const stopTracking = startTracking(user.id);
+      
       const blocked = blockStorage.isBlocked(user.id);
       setIsBlocked(blocked);
       if (blocked) {
         setBlockInfo(blockStorage.getBlockInfo(user.id));
       }
+      
+      return stopTracking;
     }
-  }, [user, refreshCounts]);
+  }, [user, refreshCounts, navigate]);
 
   // Auto-refresh unread count
   useAutoRefresh(refreshCounts, 5000);
 
   const handleLogout = () => {
+    if (user) {
+      auditLog.log("logout", user.id);
+      activityTracker.setOffline(user.id);
+    }
+    sessionManager.destroy();
     currentUserStorage.clear();
     navigate("/");
   };

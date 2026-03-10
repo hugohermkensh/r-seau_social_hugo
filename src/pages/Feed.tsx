@@ -19,6 +19,9 @@ import { postCreateSchema, commentCreateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
 import { useAutoRefresh, useDebounce } from "@/lib/useAutoRefresh";
 import { sendNotification } from "@/lib/notifications";
+import { PostReactions } from "@/components/PostReactions";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { auditLog } from "@/lib/secureStorage";
 
 const Feed = () => {
   const navigate = useNavigate();
@@ -104,6 +107,7 @@ const Feed = () => {
         type: "text",
       });
 
+      auditLog.log("post_created", user.id, { content: validated.content.substring(0, 50) });
       setNewPost("");
       toast.success("Post publié !");
       loadPosts();
@@ -319,11 +323,14 @@ const Feed = () => {
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <div className="flex items-start gap-4 mb-4">
-                    <Avatar className="border-2 border-border/50 shadow-sm">
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold">
-                        {getInitials(post.author)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="border-2 border-border/50 shadow-sm">
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground font-semibold">
+                          {getInitials(post.author)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <OnlineIndicator userId={post.authorId} size="sm" className="absolute -bottom-0.5 -right-0.5" />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="font-semibold text-foreground truncate">{post.author}</h3>
@@ -347,6 +354,11 @@ const Feed = () => {
                   </div>
 
                   <p className="text-foreground mb-4 whitespace-pre-wrap leading-relaxed pl-14">{post.content}</p>
+
+                  {/* Reactions */}
+                  <div className="pl-14 mb-2">
+                    <PostReactions postId={post.id} userId={user.id} />
+                  </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-4 pl-14 pt-3 border-t border-border/30">
