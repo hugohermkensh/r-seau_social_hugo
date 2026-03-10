@@ -191,7 +191,6 @@ const Admin = () => {
     }
 
     if (confirm(`🗑️ Supprimer TOUT le contenu de ${user.pseudo}?\n\n• Tous ses posts\n• Toutes ses stories\n• Tous ses messages\n• Ses participations aux groupes\n\nLe compte sera préservé mais vidé.`)) {
-      const { resetUserContent } = require("@/lib/storage");
       resetUserContent(userId);
       toast.success(`Contenu de ${user.pseudo} effacé`);
       loadData();
