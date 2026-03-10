@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, resetUserContent, type Group } from "@/lib/storage";
+import { AuditLogViewer } from "@/components/AuditLogViewer";
+import { StorageMonitor } from "@/components/StorageMonitor";
 import { hashPassword, isAdmin } from "@/lib/auth";
 import { blockStorage } from "@/lib/notifications";
 import { 
