@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, type Group } from "@/lib/storage";
+import { userStorage, currentUserStorage, groupStorage, messageStorage, postStorage, storyStorage, eventStorage, resetUserContent, type Group } from "@/lib/storage";
 import { hashPassword, isAdmin } from "@/lib/auth";
 import { blockStorage } from "@/lib/notifications";
 import { 
