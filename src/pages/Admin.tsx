@@ -478,7 +478,7 @@ const Admin = () => {
 
           {/* Main Content */}
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="bg-card/50 border border-border/50 p-1">
+            <TabsList className="bg-card/50 border border-border/50 p-1 flex-wrap">
               <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <UserCog className="w-4 h-4" />
                 Utilisateurs
@@ -490,6 +490,10 @@ const Admin = () => {
               <TabsTrigger value="messages" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <MessageSquare className="w-4 h-4" />
                 Messages
+              </TabsTrigger>
+              <TabsTrigger value="security" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Shield className="w-4 h-4" />
+                Sécurité
               </TabsTrigger>
             </TabsList>
 
