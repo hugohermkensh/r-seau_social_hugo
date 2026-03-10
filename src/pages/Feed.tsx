@@ -355,6 +355,11 @@ const Feed = () => {
 
                   <p className="text-foreground mb-4 whitespace-pre-wrap leading-relaxed pl-14">{post.content}</p>
 
+                  {/* Reactions */}
+                  <div className="pl-14 mb-2">
+                    <PostReactions postId={post.id} userId={user.id} />
+                  </div>
+
                   {/* Actions */}
                   <div className="flex items-center gap-4 pl-14 pt-3 border-t border-border/30">
                     <Button

@@ -94,8 +94,10 @@ const Auth = () => {
         return;
       }
 
-      // Success - reset rate limit
+      // Success - reset rate limit, create session, log
       rateLimiter.reset("login");
+      sessionManager.create(user.id);
+      auditLog.log("login", user.id, { pseudo: user.pseudo });
       toast.success(`Bienvenue ${user.pseudo} !`);
       currentUserStorage.set(user);
       navigate("/feed");
