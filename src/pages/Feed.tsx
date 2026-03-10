@@ -107,6 +107,7 @@ const Feed = () => {
         type: "text",
       });
 
+      auditLog.log("post_created", user.id, { content: validated.content.substring(0, 50) });
       setNewPost("");
       toast.success("Post publié !");
       loadPosts();
