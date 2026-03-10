@@ -812,6 +812,14 @@ const Admin = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Security Tab */}
+            <TabsContent value="security">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <AuditLogViewer />
+                <StorageMonitor />
+              </div>
+            </TabsContent>
           </Tabs>
 
           {/* Block User Dialog */}
