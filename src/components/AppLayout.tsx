@@ -12,6 +12,9 @@ import { BlockedUserScreen } from "@/components/BlockedUserScreen";
 import { blockStorage } from "@/lib/notifications";
 import { useAutoRefresh } from "@/lib/useAutoRefresh";
 import { Badge } from "@/components/ui/badge";
+import { sessionManager, auditLog } from "@/lib/secureStorage";
+import { startTracking, activityTracker } from "@/lib/activityTracker";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
 
 interface AppLayoutProps {
   children: ReactNode;
