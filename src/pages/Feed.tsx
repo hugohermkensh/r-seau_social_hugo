@@ -19,6 +19,9 @@ import { postCreateSchema, commentCreateSchema } from "@/lib/validators";
 import { formatTimestamp, getInitials } from "@/lib/utils";
 import { useAutoRefresh, useDebounce } from "@/lib/useAutoRefresh";
 import { sendNotification } from "@/lib/notifications";
+import { PostReactions } from "@/components/PostReactions";
+import { OnlineIndicator } from "@/components/OnlineIndicator";
+import { auditLog } from "@/lib/secureStorage";
 
 const Feed = () => {
   const navigate = useNavigate();
