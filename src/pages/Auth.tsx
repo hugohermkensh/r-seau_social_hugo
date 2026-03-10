@@ -10,6 +10,7 @@ import { verifyPassword } from "@/lib/auth";
 import { blockStorage } from "@/lib/notifications";
 import { BlockedUserScreen } from "@/components/BlockedUserScreen";
 import { rateLimiter } from "@/lib/rateLimiter";
+import { sessionManager, auditLog } from "@/lib/secureStorage";
 import { Shield, Lock, AlertTriangle } from "lucide-react";
 
 const Auth = () => {
